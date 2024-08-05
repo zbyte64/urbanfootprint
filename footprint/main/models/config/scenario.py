@@ -16,14 +16,15 @@ from footprint.main.managers.geo_inheritance_manager import GeoInheritanceManage
 from footprint.main.models.config.config_entity import ConfigEntity
 from footprint.main.models.config.project import Project
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 class Scenario(ConfigEntity):
     """
-        ProjectScenario is a temporary name while the old Scenario class exists
-        Scenarios configure future conditions relatives to the base conditions of their project
+    ProjectScenario is a temporary name while the old Scenario class exists
+    Scenarios configure future conditions relatives to the base conditions of their project
     """
+
     objects = GeoInheritanceManager()
 
     year = models.IntegerField(null=False, blank=False)
@@ -48,38 +49,28 @@ class Scenario(ConfigEntity):
         """
         return [Project]
 
-
     class Meta(object):
-        permissions = (
-            ('view_scenario', 'View Scenario'),
-            # Permission to merge data from another Scenario into this one
-            ('merge_scenario', 'Merge Scenario'),
-        )
-        app_label = 'main'
+        app_label = "main"
+
 
 class BaseScenario(Scenario):
     """
-        BaseScenarios represent an editing of primary or CanvasFeature data.
+    BaseScenarios represent an editing of primary or CanvasFeature data.
     """
+
     objects = GeoInheritanceManager()
+
     class Meta(object):
-        permissions = (
-            ('view_basescenario', 'View Base Scenario'),
-            # Permission to merge data from another Scenario into this one
-            ('merge_basescenario', 'Merge Base Scenario'),
-        )
-        app_label = 'main'
+        app_label = "main"
+
 
 class FutureScenario(Scenario):
     """
-        FutureScenarios represent and editing of a BuiltFormFeature table
-        that is derived from an UrbanFootprint CanvasFeature table
+    FutureScenarios represent and editing of a BuiltFormFeature table
+    that is derived from an UrbanFootprint CanvasFeature table
     """
+
     objects = GeoInheritanceManager()
+
     class Meta(object):
-        permissions = (
-            ('view_futurescenario', 'View Future Scenario'),
-            # Permission to merge data from another Scenario into this one
-            ('merge_futurescenario', 'Merge Future Scenario'),
-        )
-        app_label = 'main'
+        app_label = "main"

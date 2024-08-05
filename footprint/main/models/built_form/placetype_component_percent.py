@@ -18,25 +18,30 @@ from footprint.main.models.built_form.built_form import BuiltForm
 from footprint.main.models.built_form.placetype_component import PlacetypeComponent
 from django.db import models
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class PlacetypeComponentPercent(Percent):
     """
-        Many-to-many "through" class adds a percent field
+    Many-to-many "through" class adds a percent field
     """
+
     objects = GeoInheritanceManager()
-    placetype_component = models.ForeignKey(PlacetypeComponent, null=True)
-    placetype = models.ForeignKey('Placetype')
+    placetype_component = models.ForeignKey(
+        PlacetypeComponent, null=True, on_delete=models.PROTECT
+    )
+    placetype = models.ForeignKey("Placetype", on_delete=models.PROTECT)
 
     @property
     def component_class(self):
         return self.placetype_component.subclassed_built_form.__class__.__name__
+
     @property
     def container_class(self):
         return self.placetype.subclassed_built_form.__class__.__name__
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"
 
     def component(self):
         return BuiltForm.resolve_built_form(self.placetype_component)

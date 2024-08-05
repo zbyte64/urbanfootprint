@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -18,36 +17,39 @@ import subprocess
 from time import time
 from zipfile import ZipFile
 
-import ogr
-import osr
-import requests
-from memoize import memoize
+from osgeo import ogr, osr
 
 from django.db import connection
 from django.conf import settings
 
-from footprint.upload_manager.db import get_db_entity_params, create_db_entity, load_to_database
+from footprint.upload_manager.db import (
+    get_db_entity_params,
+    create_db_entity,
+    load_to_database,
+)
 
 
 logger = logging.getLogger(__name__)
 
 
-OGR_DRIVER_MAP = {
-    '.gdb': 'FileGDB',
-    '.shp': 'ESRI Shapefile'
-}
-GEOMETRY_COLUMN_NAME = 'wkb_geometry'
+OGR_DRIVER_MAP = {".gdb": "FileGDB", ".shp": "ESRI Shapefile"}
+GEOMETRY_COLUMN_NAME = "wkb_geometry"
 CACHE_TIMEOUT = 60 * 60 * 24 * 7  # one week
 
 
 class UnknownEsriSRIDException(Exception):
     def __init__(self, geo_fpath):
-        Exception.__init__(self, "Unable to determine SRID from esri filepath {}".format(geo_fpath))
+        Exception.__init__(
+            self, "Unable to determine SRID from esri filepath {}".format(geo_fpath)
+        )
 
 
 class NoProjectionDataAvailable(Exception):
     def __init__(self, geo_fpath):
-        Exception.__init__(self, "Unable to extract projection string from filepath {}".format(geo_fpath))
+        Exception.__init__(
+            self,
+            "Unable to extract projection string from filepath {}".format(geo_fpath),
+        )
 
 
 def process_file(zip_filepath, *args, **kwargs):
@@ -63,16 +65,16 @@ def process_file(zip_filepath, *args, **kwargs):
     logger.debug("Processing %s with kwargs: %s", zip_filepath, kwargs)
 
     # whether we should create a DbEntity (default is to just load data into db)
-    should_create_db_entity = kwargs.get('should_create_db_entity')
+    should_create_db_entity = kwargs.get("should_create_db_entity")
 
     # Whether we should filter the layer name for a multi-layer upload.
     # For uploads from a gdb fileset from the arc tool, the filename is
     # actually the name of the layer the user selected for upload, and
     # therfore doesn't have a file extension like .shp or .zip.
-    upload_task = kwargs.get('upload_task')
+    upload_task = kwargs.get("upload_task")
     if upload_task:
         upload_task_fname = upload_task.name
-        if upload_task_fname.endswith('.zip') or upload_task_fname.endswith('.shp'):
+        if upload_task_fname.endswith(".zip") or upload_task_fname.endswith(".shp"):
             layer_name = None
         else:
             layer_name = upload_task_fname
@@ -99,7 +101,15 @@ def process_file(zip_filepath, *args, **kwargs):
 
         if should_create_db_entity:
             layer_count = len(layer_names)
-            create_db_entity(pg_dump_fpath, db_entity_key, db_entity_name, table_name, layer_count, *args, **kwargs)
+            create_db_entity(
+                pg_dump_fpath,
+                db_entity_key,
+                db_entity_name,
+                table_name,
+                layer_count,
+                *args,
+                **kwargs
+            )
 
         # if not creating a DbEntity and associated layers, etc., just load
         # the data for use with the testing tool
@@ -127,7 +137,7 @@ def get_layer_names(geo_fpath, selected_layer_name=None):
     dataset = driver.Open(geo_fpath, 0)
 
     layer_names = []
-    for idx in xrange(dataset.GetLayerCount()):
+    for idx in range(dataset.GetLayerCount()):
         layer = dataset.GetLayerByIndex(idx)
         layer_name = layer.GetName()
 
@@ -160,16 +170,16 @@ def get_geospatial_filepath(zip_filepath):
     for unzipped_fname in zipped_file.namelist():
 
         # some archives contain encoded files with names like '__MACOSX'
-        if unzipped_fname.startswith('__'):
+        if unzipped_fname.startswith("__"):
             continue
 
-        if unzipped_fname.endswith('.shp'):
+        if unzipped_fname.endswith(".shp"):
             fpath = os.path.join(tmp_dir, unzipped_fname)
             return fpath
 
-        elif '.gdb/' in unzipped_fname:
+        elif ".gdb/" in unzipped_fname:
             fpath = os.path.join(tmp_dir, unzipped_fname)
-            return fpath.split('.gdb/')[0] + '.gdb'
+            return fpath.split(".gdb/")[0] + ".gdb"
 
 
 def convert_to_pgdump(geo_fpath, layer_name, table_name):
@@ -184,7 +194,9 @@ def convert_to_pgdump(geo_fpath, layer_name, table_name):
     projection_data = get_projection_string(geo_fpath, layer_name)
 
     if not projection_data:
-        logger.error("Unable to extract projection data string from filepath %s", geo_fpath)
+        logger.error(
+            "Unable to extract projection data string from filepath %s", geo_fpath
+        )
         raise NoProjectionDataAvailable(geo_fpath)
 
     # get the SRID needed for postgis from the projection data string
@@ -199,26 +211,40 @@ def convert_to_pgdump(geo_fpath, layer_name, table_name):
 
     # the resoluting sql script that will load the data
     directory = os.path.dirname(os.path.realpath(geo_fpath))
-    sql_fpath = os.path.join(directory, "{}.sql".format(layer_name.replace(' ', '_')))
+    sql_fpath = os.path.join(directory, "{}.sql".format(layer_name.replace(" ", "_")))
 
     # construct the ogr2ogr command list
     cmd = [
         "ogr2ogr",
-        "--config", "PG_USE_COPY", "YES",  # use copy instead of insert for performance
-        "-f", "PGDump", sql_fpath, geo_fpath,
-        "-lco", "SCHEMA={}".format(settings.IMPORT_SCHEMA),
-        "-nln", table_name,
-        "-lco", "GEOMETRY_NAME={}".format(GEOMETRY_COLUMN_NAME),
-        "-lco", "DROP_TABLE=IF_EXISTS",
-        "-lco", "CREATE_SCHEMA=OFF",
-        "-nlt", "GEOMETRY",
-        "-lco", "SRID={}".format(srid),
-        "-lco", "COLUMN_TYPES=wkb_geometry=geometry",
-        "-lco", "PRECISION=NO",
-        layer_name
+        "--config",
+        "PG_USE_COPY",
+        "YES",  # use copy instead of insert for performance
+        "-f",
+        "PGDump",
+        sql_fpath,
+        geo_fpath,
+        "-lco",
+        "SCHEMA={}".format(settings.IMPORT_SCHEMA),
+        "-nln",
+        table_name,
+        "-lco",
+        "GEOMETRY_NAME={}".format(GEOMETRY_COLUMN_NAME),
+        "-lco",
+        "DROP_TABLE=IF_EXISTS",
+        "-lco",
+        "CREATE_SCHEMA=OFF",
+        "-nlt",
+        "GEOMETRY",
+        "-lco",
+        "SRID={}".format(srid),
+        "-lco",
+        "COLUMN_TYPES=wkb_geometry=geometry",
+        "-lco",
+        "PRECISION=NO",
+        layer_name,
     ]
 
-    logger.debug("Performing the following ogr2ogr command: %s", ' '.join(cmd))
+    logger.debug("Performing the following ogr2ogr command: %s", " ".join(cmd))
 
     # run ogr2ogr in a subprocess and return the filepath to the generated sql file
     subprocess.check_call(cmd)
@@ -249,26 +275,32 @@ def get_projection_string_from_output(output):
     the PROJCS[...] or GEOGCS[...] section and remove whitespaces.
     """
 
-    start_idx = output.find('PROJCS')
+    start_idx = output.find("PROJCS")
     if start_idx == -1:
-        start_idx = output.find('GEOGCS')
+        start_idx = output.find("GEOGCS")
         if start_idx == -1:
             return
 
     stack = []
     stack_modified = False
     for i, char in enumerate(output[start_idx:]):
-        if char == '[':
+        if char == "[":
             stack.append(char)
             stack_modified = True
-        elif char == ']':
+        elif char == "]":
             stack.pop()
         if stack_modified and not stack:
             end_idx = start_idx + i
-            projection = output[start_idx:end_idx+1]
-            projection = re.sub(r'^\s*', '', projection, flags=re.MULTILINE)  # strip leading whitespaces from each line
-            projection = re.sub(r'\s*$', '', projection, flags=re.MULTILINE)  # and trailing whitespaces
-            projection = re.sub(r'\n', '', projection)  # and then finally newline characters
+            projection = output[start_idx : end_idx + 1]
+            projection = re.sub(
+                r"^\s*", "", projection, flags=re.MULTILINE
+            )  # strip leading whitespaces from each line
+            projection = re.sub(
+                r"\s*$", "", projection, flags=re.MULTILINE
+            )  # and trailing whitespaces
+            projection = re.sub(
+                r"\n", "", projection
+            )  # and then finally newline characters
 
             return projection
 
@@ -353,7 +385,6 @@ def get_srid_via_osr(projection_data):
         return int(code)
 
 
-@memoize(timeout=CACHE_TIMEOUT)
 def get_srid_via_api(projection_data):
     """
     Make an API call to prj2epsg.org to lookup the SRID.
@@ -376,12 +407,11 @@ def get_srid_via_api(projection_data):
     r = requests.get(url)
     if r.status_code == 200:
         data = r.json()
-        if 'codes' in data and len(data['codes']) == 1:
-            if 'code' in data['codes'][0]:
-                return int(data['codes'][0]['code'])
+        if "codes" in data and len(data["codes"]) == 1:
+            if "code" in data["codes"][0]:
+                return int(data["codes"][0]["code"])
 
 
-@memoize(timeout=CACHE_TIMEOUT)
 def is_valid_srid(srid):
     """
     Returns True if the extracted SRID exists in PostGIS's
@@ -393,7 +423,9 @@ def is_valid_srid(srid):
 
     cursor = connection.cursor()
     try:
-        cursor.execute("SELECT COUNT(*) FROM spatial_ref_sys WHERE srid = %(srid)s", {'srid': srid})
+        cursor.execute(
+            "SELECT COUNT(*) FROM spatial_ref_sys WHERE srid = %(srid)s", {"srid": srid}
+        )
         result = cursor.fetchone()
     finally:
         cursor.close()
@@ -410,4 +442,4 @@ def remove_bad_auth_code(projection_string):
     included a bad SRID value.
     """
 
-    return re.sub(r',AUTHORITY\[[^\]]*\]', '', projection_string)
+    return re.sub(r",AUTHORITY\[[^\]]*\]", "", projection_string)

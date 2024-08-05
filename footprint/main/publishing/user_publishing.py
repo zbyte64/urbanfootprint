@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -15,15 +14,24 @@ import random
 
 from django.contrib.auth.models import User, Group
 from django.db import reset_queries
-from guardian.core import ObjectPermissionChecker
 from django.dispatch import Signal
 
 from footprint.main.lib.functions import compact, map_to_dict, unique, flat_map
-from footprint.main.models.config.global_config import global_config_singleton, GlobalConfig
-from footprint.main.models.keys.permission_key import PermissionKey, ConfigEntityPermissionKey, DbEntityPermissionKey
+from footprint.main.models.config.global_config import (
+    global_config_singleton,
+    GlobalConfig,
+)
+from footprint.main.models.keys.permission_key import (
+    PermissionKey,
+    ConfigEntityPermissionKey,
+    DbEntityPermissionKey,
+)
 from footprint.main.models.keys.user_group_key import UserGroupKey
 from footprint.main.publishing.instance_bundle import InstanceBundle
-from footprint.main.publishing.user_initialization import update_or_create_group, update_or_create_user
+from footprint.main.publishing.user_initialization import (
+    update_or_create_group,
+    update_or_create_user,
+)
 from footprint.main.models.group_hierarchy import GroupHierarchy
 from footprint.main.utils.utils import resolvable_module_attr_path
 from footprint.main.publishing.publishing import post_save_publishing
@@ -32,19 +40,20 @@ from footprint.client.configuration.fixture import UserFixture
 from footprint.client.configuration.utils import resolve_fixture
 
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 logger = logging.getLogger(__name__)
 
 
 def dependent_signal_paths(signal_path):
     """
-        Gives the hierarchy of publisher signal calling order based on the given signal
-        Signals are given as strings instead of paths for serialization ease
-        param: signal_path. The signal path for which the dependent signals are returned
-        return: An array of signal_paths or an empty array
+    Gives the hierarchy of publisher signal calling order based on the given signal
+    Signals are given as strings instead of paths for serialization ease
+    param: signal_path. The signal path for which the dependent signals are returned
+    return: An array of signal_paths or an empty array
     """
     return []
+
 
 # Very wild guess about layer saving proportional times to send to the client
 # These represent the parsed signal names sent to the client after the dependencies of
@@ -58,19 +67,21 @@ signal_proportion_lookup = dict(
 def on_user_post_save_process_user(sender, **kwargs):
     from footprint.main.publishing import tilestache_publishing
 
-    scenario = kwargs['scenario']
-    tilestache_publishing.on_config_entity_post_save_tilestache(None, instance=scenario, ignore_raster_layer=True)
+    scenario = kwargs["scenario"]
+    tilestache_publishing.on_config_entity_post_save_tilestache(
+        None, instance=scenario, ignore_raster_layer=True
+    )
 
 
-post_save_user_initial = Signal(providing_args=[])
+post_save_user_initial = Signal()
 post_save_user_initial.connect(on_user_post_save_process_user)
 
 
 def on_user_post_save(sender, **kwargs):
-    user = kwargs['instance']
+    user = kwargs["instance"]
     groups = user.groups.all()
     if not groups:
-        raise Exception('User %s is not in any groups', user)
+        raise Exception("User %s is not in any groups", user)
 
     config_entities = set()
     for group in groups:
@@ -85,9 +96,11 @@ def on_user_post_save(sender, **kwargs):
 
     # We should always have at least one ConfigEntity
     if not config_entities:
-        raise Exception('No config entity for user {user}'.format(user=user))
+        raise Exception("No config entity for user {user}".format(user=user))
 
-    starting_signal_path = resolvable_module_attr_path(__name__, 'post_save_user_initial')
+    starting_signal_path = resolvable_module_attr_path(
+        __name__, "post_save_user_initial"
+    )
 
     scenarios = set()
     for config_entity in config_entities:
@@ -110,8 +123,8 @@ def on_user_post_save(sender, **kwargs):
             instance_key=user.username,
             signal_proportion_lookup=signal_proportion_lookup,
             dependent_signal_paths=dependent_signal_paths,
-            signal_prefix='post_save_user',
-            scenario=scenario
+            signal_prefix="post_save_user",
+            scenario=scenario,
         )
 
 
@@ -131,8 +144,11 @@ def _update_or_create_config_entity_groups(config_entity):
     # treated as a ConfigEntity Group
     client_fixture = ConfigEntityFixture.resolve_config_entity_fixture(config_entity)
     return map(
-        lambda global_group_name: _update_or_create_config_entity_group(config_entity, global_group_name),
-        client_fixture.default_config_entity_groups())
+        lambda global_group_name: _update_or_create_config_entity_group(
+            config_entity, global_group_name
+        ),
+        client_fixture.default_config_entity_groups(),
+    )
 
 
 def _update_or_create_config_entity_group(config_entity, global_group_name):
@@ -142,17 +158,23 @@ def _update_or_create_config_entity_group(config_entity, global_group_name):
         # GlobalConfig case, nothing to do here
         return Group.objects.get(name=global_group_name)
 
-    config_entity_group_name = '__'.join(compact([config_entity.schema_prefix, global_group_name]))
+    config_entity_group_name = "__".join(
+        compact([config_entity.schema_prefix, global_group_name])
+    )
 
     # The superiors of this group are our global Group and
     # the parent ConfigEntity's groups whose global Group is equal or greater than ours
     # (e.g. foo__user's superior is user and and bar_user and bar_manager if bar is the parent ConfigEntity of foo)
 
     # Get the name of all groups of the parent ConfigEntity
-    all_parent_config_entity_group_hierarchies = config_entity.parent_config_entity.group_hierarchies.all()
+    all_parent_config_entity_group_hierarchies = (
+        config_entity.parent_config_entity.group_hierarchies.all()
+    )
 
     # Only accept Groups that are at least at our global Group level
-    eligible_global_groups_names = UserGroupKey.GLOBAL[0:UserGroupKey.GLOBAL.index(global_group_name)+1]
+    eligible_global_groups_names = UserGroupKey.GLOBAL[
+        0 : UserGroupKey.GLOBAL.index(global_group_name) + 1
+    ]
 
     # Given a minimum eligible permission level (e.g. above Manager),
     # find all of the parent ConfigEntity's Groups that have at least that permission level (e.g. Manager and Admin).
@@ -167,22 +189,32 @@ def _update_or_create_config_entity_group(config_entity, global_group_name):
     # it just means we process the lower permission first for consistent logging. (There is typically only one Group anyway)
     group_hierarchies = sorted(
         config_entity_groups_matching_eligible_global_groups,
-        key=lambda group_hierarchy: eligible_global_groups_names.index(group_hierarchy.globalized_group().name))
+        key=lambda group_hierarchy: eligible_global_groups_names.index(
+            group_hierarchy.globalized_group().name
+        ),
+    )
 
     # Combine our global Group name with the parent ConfigEntity Groups
     superior_group_names = unique(
-        [global_group_name] +
-        map(lambda group_hierarchy: group_hierarchy.group.name, group_hierarchies)
+        [global_group_name]
+        + map(lambda group_hierarchy: group_hierarchy.group.name, group_hierarchies)
     )
 
     # Update or create the Group
     return update_or_create_group(
         name=config_entity_group_name,
         config_entity=config_entity,
-        superiors=superior_group_names)
+        superiors=superior_group_names,
+    )
 
 
-def sync_config_entity_group_permissions(obj, config_entity_groups, permission_lookup, permission_key_class=PermissionKey, **kwargs):
+def sync_config_entity_group_permissions(
+    obj,
+    config_entity_groups,
+    permission_lookup,
+    permission_key_class=PermissionKey,
+    **kwargs
+):
     """
         Syncs ConfigEntity Group permissions for a ConfigEntity or DbEntity
         All superior Groups will also receive permissions. Superior groups to a ConfigEntity Group
@@ -216,9 +248,13 @@ def sync_config_entity_group_permissions(obj, config_entity_groups, permission_l
         """
 
         # Get the global superior, which exists except for ADMIN
-        global_superior = GroupHierarchy.objects.get(group=group).superiors.get(
-            name__in=UserGroupKey.GLOBAL
-        ) if group.name != UserGroupKey.SUPERADMIN else None
+        global_superior = (
+            GroupHierarchy.objects.get(group=group).superiors.get(
+                name__in=UserGroupKey.GLOBAL
+            )
+            if group.name != UserGroupKey.SUPERADMIN
+            else None
+        )
         # See if we have a permission matching the group or global superior
         for check_group in [group] + ([global_superior] if global_superior else []):
             if permission_lookup.get(check_group.name):
@@ -226,7 +262,10 @@ def sync_config_entity_group_permissions(obj, config_entity_groups, permission_l
         # No match, no problem. Recurse on the next Global group or its subordinate
         subordinates = filter(
             lambda subordinate: subordinate.group.name in UserGroupKey.GLOBAL,
-            (group if group.name in UserGroupKey.GLOBAL else global_superior).subordinates.all())
+            (
+                group if group.name in UserGroupKey.GLOBAL else global_superior
+            ).subordinates.all(),
+        )
         if len(subordinates) == 1:
             return _resolve_permission(subordinates[0].group, permission_lookup)
         else:
@@ -235,7 +274,7 @@ def sync_config_entity_group_permissions(obj, config_entity_groups, permission_l
                 and not exactly one global subordinate exists: {subordinates}".format(
                     group_name=group.name,
                     permission_lookup=permission_lookup,
-                    subordinates=subordinates
+                    subordinates=subordinates,
                 )
             )
 
@@ -244,22 +283,33 @@ def sync_config_entity_group_permissions(obj, config_entity_groups, permission_l
     # TODO this might change in the future if we define subordinate ConfigEntity Groups on the object
     config_entity_group_permissions = map_to_dict(
         lambda group: [group.name, _resolve_permission(group, permission_lookup)],
-        config_entity_groups)
+        config_entity_groups,
+    )
     obj.sync_permissions(
         additional_permissions=config_entity_group_permissions,
         permission_key_class=permission_key_class,
-        superior_permission_lookup=permission_lookup
+        superior_permission_lookup=permission_lookup,
     )
 
     # TODO this is for debugging/logging. It can be commented out
     for group_name, permission_key in config_entity_group_permissions.items():
-        logger.info("User Publishing. For %s %s gave %s permission(s) to ConfigEntity UserGroup: %s" %
-                    (obj.__class__.__name__, obj.name, permission_key, group_name))
-        for class_permission_key in permission_key_class.permission_keys(permission_key, obj.__class__):
+        logger.info(
+            "User Publishing. For %s %s gave %s permission(s) to ConfigEntity UserGroup: %s"
+            % (obj.__class__.__name__, obj.name, permission_key, group_name)
+        )
+        for class_permission_key in permission_key_class.permission_keys(
+            permission_key, obj.__class__
+        ):
             perm_checker = ObjectPermissionChecker(Group.objects.get(name=group_name))
-            assert perm_checker.has_perm(class_permission_key, obj), \
-                "No permission for Group %s, Permission %s, ConfigEntity %s. It has permissions %s" % \
-                (group_name, class_permission_key, obj.name, perm_checker.get_perms(obj))
+            assert perm_checker.has_perm(class_permission_key, obj), (
+                "No permission for Group %s, Permission %s, ConfigEntity %s. It has permissions %s"
+                % (
+                    group_name,
+                    class_permission_key,
+                    obj.name,
+                    perm_checker.get_perms(obj),
+                )
+            )
 
     return config_entity_group_permissions
 
@@ -278,12 +328,15 @@ def on_config_entity_post_save_group(sender, **kwargs):
     config_entity = InstanceBundle.extract_single_instance(**kwargs)
     if config_entity._no_post_save_publishing:
         return
-    user = kwargs.get('user')
-    logger.info("Handler: post_save_user for config_entity {config_entity} and user {username}".format(
-        config_entity=config_entity.name,
-        username=user.username if user else 'undefined'))
+    user = kwargs.get("user")
+    logger.info(
+        "Handler: post_save_user for config_entity {config_entity} and user {username}".format(
+            config_entity=config_entity.name,
+            username=user.username if user else "undefined",
+        )
+    )
 
-    if kwargs.get('created') and not config_entity.creator:
+    if kwargs.get("created") and not config_entity.creator:
         # Set the ConfigEntity.creator to the default admin group user if it wasn't set by the API
         config_entity.creator = User.objects.get(username=UserGroupKey.SUPERADMIN)
         config_entity._no_post_save_publishing = True
@@ -293,12 +346,16 @@ def on_config_entity_post_save_group(sender, **kwargs):
     # First update_or_create any default groups. This usually just applies to global_config
     from footprint.client.configuration.fixture import UserFixture
     from footprint.client.configuration.utils import resolve_fixture
-    user_fixture = resolve_fixture("user", "user", UserFixture, config_entity.schema(),
-                                   config_entity=config_entity)
+
+    user_fixture = resolve_fixture(
+        "user", "user", UserFixture, config_entity.schema(), config_entity=config_entity
+    )
     for group_fixture in user_fixture.groups():
         group = update_or_create_group(**group_fixture)
-        logger.info("User Publishing. For ConfigEntity %s synced global UserGroup: %s" %
-                    (config_entity.name, group.name))
+        logger.info(
+            "User Publishing. For ConfigEntity %s synced global UserGroup: %s"
+            % (config_entity.name, group.name)
+        )
 
     # Sync permissions for the ConfigEntity
     # Resolve the default ConfigEntity permissions for this config_entity
@@ -307,12 +364,23 @@ def on_config_entity_post_save_group(sender, **kwargs):
     # Get the mapping of groups to permission types for the config_entity's most relevant fixture
     # These group keys are generally all global groups.
     from footprint.client.configuration.fixture import ConfigEntitiesFixture
-    config_entities_fixture = resolve_fixture("config_entity", "config_entities", ConfigEntitiesFixture, config_entity.schema())
+
+    config_entities_fixture = resolve_fixture(
+        "config_entity",
+        "config_entities",
+        ConfigEntitiesFixture,
+        config_entity.schema(),
+    )
     permission_lookup = config_entities_fixture.default_config_entity_permissions()
     # Set the permissions for the config_entity groups. This will also set all superior group permissions
     # to the same permissions or greater is they match something in the permission_lookup
     config_entity_group_permissions = sync_config_entity_group_permissions(
-        config_entity, config_entity_groups, permission_lookup, permission_key_class=ConfigEntityPermissionKey, **kwargs)
+        config_entity,
+        config_entity_groups,
+        permission_lookup,
+        permission_key_class=ConfigEntityPermissionKey,
+        **kwargs
+    )
 
     # Give the groups read permissions on the ancestor config_entities
     # TODO restrict this access further for the UserGroupKey.DEMO group
@@ -330,7 +398,7 @@ def on_config_entity_post_save_user(sender, **kwargs):
     config_entity = InstanceBundle.extract_single_instance(**kwargs)
     if config_entity._no_post_save_publishing:
         return
-    if kwargs.get('created') and not config_entity.creator:
+    if kwargs.get("created") and not config_entity.creator:
         # Set the ConfigEntity.creator to the default admin group user if it wasn't set by the API
         config_entity.creator = User.objects.get(username=UserGroupKey.SUPERADMIN)
         config_entity._no_post_save_publishing = True
@@ -338,30 +406,43 @@ def on_config_entity_post_save_user(sender, **kwargs):
         config_entity._no_post_save_publishing = False
 
     # TODO these should be importable on top. Something is messed up
-    user_fixture = resolve_fixture("user", "user", UserFixture, config_entity.schema(),
-                                   config_entity=config_entity)
+    user_fixture = resolve_fixture(
+        "user", "user", UserFixture, config_entity.schema(), config_entity=config_entity
+    )
 
     # Get the ConfigEntityGroups of the ConfigEntity. GlobalConfig uses SuperAdmin as its Group
-    config_entity_groups = config_entity.config_entity_groups() if \
-        not isinstance(config_entity, GlobalConfig) else \
-        [Group.objects.get(name=UserGroupKey.SUPERADMIN)]
+    config_entity_groups = (
+        config_entity.config_entity_groups()
+        if not isinstance(config_entity, GlobalConfig)
+        else [Group.objects.get(name=UserGroupKey.SUPERADMIN)]
+    )
 
     # Find all existing users of all ConfigEntity Groups of the ConfigEntity
     # Note that we use values() instead of all() to get dicts with just needed fields instead of model instances
     # TODO remove username from here once all users have emails. update_or_create_user() checks username for uniquess presently
     existing_user_dicts = flat_map(
-        lambda group: group.user_set.all().values('email', 'username'),
-        config_entity_groups
+        lambda group: group.user_set.all().values("email", "username"),
+        config_entity_groups,
     )
 
     # Combine the existing users with the fixtures, giving the former preference. We favor
     # what's in the database because the user might have updated their profile
     # Only accept fixture users not matching users in the db (by email)
-    existing_emails = map(lambda existing_user_dict: existing_user_dict['email'], existing_user_dicts)
-    logger.debug("Found existing users %s" % ', '.join(existing_emails))
-    new_fixture_users = filter(lambda fixture_user: fixture_user['email'] not in existing_emails, user_fixture.users())
+    existing_emails = map(
+        lambda existing_user_dict: existing_user_dict["email"], existing_user_dicts
+    )
+    logger.debug("Found existing users %s" % ", ".join(existing_emails))
+    new_fixture_users = filter(
+        lambda fixture_user: fixture_user["email"] not in existing_emails,
+        user_fixture.users(),
+    )
     if len(new_fixture_users) > 0:
-        logger.debug("Found new fixture users %s" % ', '.join(map(lambda fixture_user: fixture_user['email'], new_fixture_users)))
+        logger.debug(
+            "Found new fixture users %s"
+            % ", ".join(
+                map(lambda fixture_user: fixture_user["email"], new_fixture_users)
+            )
+        )
     user_dicts = existing_user_dicts + new_fixture_users
 
     # Update or create each user. This will create users of new fixtures and run post-save processing
@@ -402,7 +483,9 @@ def on_db_entity_post_save_user(sender, **kwargs):
 
     config_entity = db_entity_interest.config_entity.subclassed
     db_entity = db_entity_interest.db_entity
-    logger.info("Handler: on_db_entity_post_save_user. DbEntity: %s" % db_entity.full_name)
+    logger.info(
+        "Handler: on_db_entity_post_save_user. DbEntity: %s" % db_entity.full_name
+    )
 
     # Get the ConfigEntity Group(s) for the DbEntity's ConfigEntity
     # The groups are configured based on the subclass of ConfigEntity
@@ -412,20 +495,26 @@ def on_db_entity_post_save_user(sender, **kwargs):
 
     # Resolve the default DbEntity permissions for the DbEntity's ConfigEntity
     from footprint.client.configuration.fixture import ConfigEntityFixture
+
     config_entity = db_entity_interest.config_entity.subclassed
-    config_entity_fixture = ConfigEntityFixture.resolve_config_entity_fixture(config_entity)
+    config_entity_fixture = ConfigEntityFixture.resolve_config_entity_fixture(
+        config_entity
+    )
     permission_lookup = config_entity_fixture.default_db_entity_permissions()
-    logger.info("For ConfigEntity {config_entity} will apply DbEntity permission to groups {groups} based on permission_lookup {permission_lookup}".format(
-        groups=', '.join(map(lambda group: group.name, config_entity_groups)),
-        config_entity=config_entity.name,
-        permission_lookup=permission_lookup
-    ))
+    logger.info(
+        "For ConfigEntity {config_entity} will apply DbEntity permission to groups {groups} based on permission_lookup {permission_lookup}".format(
+            groups=", ".join(map(lambda group: group.name, config_entity_groups)),
+            config_entity=config_entity.name,
+            permission_lookup=permission_lookup,
+        )
+    )
     sync_config_entity_group_permissions(
-            db_entity,
-            config_entity_groups,
-            permission_lookup,
-            permission_key_class=DbEntityPermissionKey,
-            **kwargs)
+        db_entity,
+        config_entity_groups,
+        permission_lookup,
+        permission_key_class=DbEntityPermissionKey,
+        **kwargs
+    )
 
     # Repeat the process for all descendant ConfigEntities, just giving their Groups view permission.
     # There's no obvious use case for a ConfigEntity Group of a child ConfigEntity having edit permission
@@ -435,16 +524,21 @@ def on_db_entity_post_save_user(sender, **kwargs):
         # The permission lookup maps the global version of each group to VIEW permission
         # Example: The Manager Group of Project Foo would just map to UserGroupKey.MANAGER
         descendant_permission_lookup = map_to_dict(
-            lambda config_entity_group: [config_entity_group.group_hierarchy.globalized_group().name, PermissionKey.VIEW],
-            descendant_config_entity_groups
+            lambda config_entity_group: [
+                config_entity_group.group_hierarchy.globalized_group().name,
+                PermissionKey.VIEW,
+            ],
+            descendant_config_entity_groups,
         )
 
         logger.info(
             "For descendant ConfigEntity {config_entity} will apply DbEntity permission \
             to groups {groups} based on permission_lookup {permission_lookup}".format(
-                groups=', '.join(map(lambda group: group.name, descendant_config_entity_groups)),
+                groups=", ".join(
+                    map(lambda group: group.name, descendant_config_entity_groups)
+                ),
                 config_entity=descendant.name,
-                permission_lookup=descendant_permission_lookup
+                permission_lookup=descendant_permission_lookup,
             )
         )
 
@@ -455,6 +549,7 @@ def on_db_entity_post_save_user(sender, **kwargs):
             descendant_permission_lookup,
             permission_key_class=DbEntityPermissionKey,
             process_parent_config_entity_groups=False,
-            **kwargs)
+            **kwargs
+        )
 
     reset_queries()

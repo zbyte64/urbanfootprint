@@ -19,28 +19,33 @@ from footprint.main.models.built_form.built_form import BuiltForm
 from footprint.main.models.built_form.placetype_component import PlacetypeComponent
 from footprint.main.models.built_form.primary_component import PrimaryComponent
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 class PrimaryComponentPercent(Percent):
     """
-        Many-to-many "through" class adds a percent field
+    Many-to-many "through" class adds a percent field
     """
+
     objects = GeoInheritanceManager()
-    primary_component = models.ForeignKey(PrimaryComponent)
-    placetype_component = models.ForeignKey(PlacetypeComponent)
+    primary_component = models.ForeignKey(PrimaryComponent, on_delete=models.PROTECT)
+    placetype_component = models.ForeignKey(
+        PlacetypeComponent, on_delete=models.PROTECT
+    )
 
     @property
     def component_class(self):
         return self.primary_component.subclassed_built_form.__class__.__name__
+
     @property
     def container_class(self):
         return self.placetype_component.subclassed_built_form.__class__.__name__
 
-
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"
 
     def component(self):
         return BuiltForm.resolve_built_form(self.primary_component)
@@ -49,6 +54,8 @@ class PrimaryComponentPercent(Percent):
         return BuiltForm.resolve_built_form(self.placetype_component)
 
     def __unicode__(self):
-        return '{2}: [{1}% {0}]'.format(self.primary_component.name,
-                                         round(self.percent * 100, 3),
-                                         self.placetype_component.name)
+        return "{2}: [{1}% {0}]".format(
+            self.primary_component.name,
+            round(self.percent * 100, 3),
+            self.placetype_component.name,
+        )

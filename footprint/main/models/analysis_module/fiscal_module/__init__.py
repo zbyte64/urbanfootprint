@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -10,6 +9,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
-import fiscal_updater_tool
+from . import fiscal_updater_tool

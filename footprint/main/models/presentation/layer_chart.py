@@ -17,13 +17,15 @@ from footprint.main.models.presentation.layer.layer import Layer
 from footprint.main.models.presentation.chart import Chart
 
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class LayerChart(Chart):
     """
-        A chart that has a layer configuration to allow subcharts to be displayed geographically
+    A chart that has a layer configuration to allow subcharts to be displayed geographically
     """
-    layer = models.ForeignKey(Layer, null=False)
+
+    layer = models.ForeignKey(Layer, null=False, on_delete=models.PROTECT)
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"

@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -12,10 +11,11 @@
 
 from django.db import models
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class Cloneable(models.Model):
-    origin_instance = models.ForeignKey('self', null=True)
+    origin_instance = models.ForeignKey("self", null=True, on_delete=models.PROTECT)
 
     class Meta(object):
         abstract = True

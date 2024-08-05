@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -15,17 +14,19 @@
 # They should operate on any type and have qualities such as chainable or passable as arguments to other functions
 # Make sure you check out Python's functools and itertools to see if what you need already exists before you write it.
 from inspect import isfunction
-from itertools import chain, izip
+from itertools import chain
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 import collections
 
 
-def to_iterable(object,
-                if_iterable=lambda object: object,
-                if_uniterable=lambda object: [object],
-                is_iterable=lambda object: is_iterable(object)):
+def to_iterable(
+    object,
+    if_iterable=lambda object: object,
+    if_uniterable=lambda object: [object],
+    is_iterable=lambda object: is_iterable(object),
+):
     """
     Returns an array containing the argument if it is not already iterable.
 
@@ -45,10 +46,12 @@ def is_list_or_tuple(object):
 def is_list_tuple_or_dict(object):
     return isinstance(object, (list, tuple, dict))
 
-def to_list(object,
-            if_list_or_tuple=lambda object: object,
-            if_not_list_nor_tuple=lambda object: [object],
-            is_list_or_tuple=is_list_or_tuple
+
+def to_list(
+    object,
+    if_list_or_tuple=lambda object: object,
+    if_not_list_nor_tuple=lambda object: [object],
+    is_list_or_tuple=is_list_or_tuple,
 ):
     """
     Returns an array containing the argument if it is not already an array
@@ -59,7 +62,11 @@ def to_list(object,
         if_not_list_nor_tuple -- An optional lambda to specify a mapping of the object if not a list or tuple (default returns  [object])
 
     """
-    return if_list_or_tuple(object) if is_list_or_tuple(object) else if_not_list_nor_tuple(object)
+    return (
+        if_list_or_tuple(object)
+        if is_list_or_tuple(object)
+        else if_not_list_nor_tuple(object)
+    )
 
 
 def to_single_if_one_item(list):
@@ -78,7 +85,7 @@ def map_item_or_items_or_dict_values(item_lambda, data):
     :param data
     :return:
     """
-    if (isinstance(data, dict)):
+    if isinstance(data, dict):
         # Map to a new dict. Pass through the keys and map the values
         return map_dict_to_dict(lambda key, value: [key, item_lambda(value)], data)
     else:
@@ -92,17 +99,17 @@ def is_iterable(object):
 
 def to_dict_if_none(object):
     """
-        Forces an object to be an empty dictionary if it is null
+    Forces an object to be an empty dictionary if it is null
     """
     return {} if not object else object
 
 
 def merge(*args):
     """
-        Merges any number dictionaries together. The last duplicate dictionary keys always take precedence
+    Merges any number dictionaries together. The last duplicate dictionary keys always take precedence
 
-        Keyword arguments:
-            **args: any number of dictionaries
+    Keyword arguments:
+        **args: any number of dictionaries
     """
 
     super_dictionary = {}
@@ -125,8 +132,13 @@ def deep_merge(*args):
     for item in args:
         if not is_list_tuple_or_dict(item):
             raise Exception("Expected a dict, list, or tuple, but got a %s" % item)
-        elif item_type and not (isinstance(item, item_type) or issubclass(item_type, item.__class__)):
-            raise Exception("Not all items are the same type: %s" % map(lambda arg: arg.__class__, args))
+        elif item_type and not (
+            isinstance(item, item_type) or issubclass(item_type, item.__class__)
+        ):
+            raise Exception(
+                "Not all items are the same type: %s"
+                % map(lambda arg: arg.__class__, args)
+            )
         else:
             # Assign the dictionary type to dict or (list, tuple). We'll use this to make sure
             # all siblings are the same type, and we'll use it to convert lists/tuples back
@@ -143,21 +155,38 @@ def deep_merge(*args):
 
         # Find keys already present with non-null values in the super dictionary
         # and keys that represent dict, list, or tuple.
-        non_empty_keys = set(k for k, v in super_dictionary.iteritems() if v is not None).intersection(
-            set(k for k, v in dct.iteritems() if v is not None))
-        matching_keys_of_dicts = {key for key in non_empty_keys if
-                                  is_list_tuple_or_dict(super_dictionary[key]) and
-                                  is_list_tuple_or_dict(dct[key])}
+        non_empty_keys = set(
+            k for k, v in super_dictionary.items() if v is not None
+        ).intersection(set(k for k, v in dct.items() if v is not None))
+        matching_keys_of_dicts = {
+            key
+            for key in non_empty_keys
+            if is_list_tuple_or_dict(super_dictionary[key])
+            and is_list_tuple_or_dict(dct[key])
+        }
         # Recursively merge each matching key
-        merged_dict = {key: deep_merge(super_dictionary[key], dct[key]) for key in matching_keys_of_dicts}
+        merged_dict = {
+            key: deep_merge(super_dictionary[key], dct[key])
+            for key in matching_keys_of_dicts
+        }
 
         # Find keys not in the super dictionary
-        non_matching_keys = set(super_dictionary.iterkeys()).union(set(dct.iterkeys())).difference(matching_keys_of_dicts)
+        non_matching_keys = (
+            set(super_dictionary.iterkeys())
+            .union(set(dct.iterkeys()))
+            .difference(matching_keys_of_dicts)
+        )
         # Add those keys to the super_dictionary
-        super_dictionary = dict(chain(
-            ((k, v) for k, v in chain(super_dictionary.iteritems(), dct.iteritems())
-             if k in non_matching_keys),
-            merged_dict.iteritems()))
+        super_dictionary = dict(
+            chain(
+                (
+                    (k, v)
+                    for k, v in chain(super_dictionary.items(), dct.items())
+                    if k in non_matching_keys
+                ),
+                merged_dict.items(),
+            )
+        )
         # Return the type as an item_type instance
     if issubclass(item_type, dict):
         return item_type(**super_dictionary)
@@ -167,15 +196,18 @@ def deep_merge(*args):
 
 def ordered_dict_merge(*args):
     """
-        Merges any number dictionaries together. The last duplicate dictionary keys always take precedence
+    Merges any number dictionaries together. The last duplicate dictionary keys always take precedence
 
-        Keyword arguments:
-            **args: any number of dictionaries
+    Keyword arguments:
+        **args: any number of dictionaries
     """
     super_dictionary = collections.OrderedDict()
     for dictionary in args:
-        super_dictionary = collections.OrderedDict(super_dictionary.items() + dictionary.items())
+        super_dictionary = collections.OrderedDict(
+            super_dictionary.items() + dictionary.items()
+        )
     return super_dictionary
+
 
 def merge_dict_list_values(*dicts):
     """
@@ -201,8 +233,8 @@ def filter_keys(dct, keys):
     :param keys:
     :return:
     """
-    return dict((k, v) for k, v in dct.iteritems()
-                if k in keys)
+    return dict((k, v) for k, v in dct.items() if k in keys)
+
 
 def remove_keys(dct, keys):
     """
@@ -213,10 +245,16 @@ def remove_keys(dct, keys):
     any key under a foo key
     :return:
     """
-    return dict((k,
-                 # Recurs on v if it's a dict, only passing through matching keys
-                 remove_keys(v, parse_key_strings(keys, k)) if isinstance(v, dict) else v)
-                for k, v in dct.iteritems() if not k in keys)
+    return dict(
+        (
+            k,
+            # Recurs on v if it's a dict, only passing through matching keys
+            remove_keys(v, parse_key_strings(keys, k)) if isinstance(v, dict) else v,
+        )
+        for k, v in dct.items()
+        if not k in keys
+    )
+
 
 def map_keys(dct, key_transform_dict):
     """
@@ -225,13 +263,20 @@ def map_keys(dct, key_transform_dict):
     :param key_transform_dict: transforms a key from this dict's key to a value
     :return: a new dict
     """
-    return dict((key_transform_dict.get(k, k), v) for k, v in dct.iteritems())
+    return dict((key_transform_dict.get(k, k), v) for k, v in dct.items())
 
 
 def parse_key_strings(keys, segment):
-    keys_segments = map(lambda key: key.split('.'), keys)
-    return map(lambda key_segments: '.'.join(key_segments[1:]),
-               filter(lambda key_segments: len(key_segments) > 1 and (key_segments[0] in ['*', segment]), keys_segments))
+    keys_segments = map(lambda key: key.split("."), keys)
+    return map(
+        lambda key_segments: ".".join(key_segments[1:]),
+        filter(
+            lambda key_segments: len(key_segments) > 1
+            and (key_segments[0] in ["*", segment]),
+            keys_segments,
+        ),
+    )
+
 
 def remove_items(array, keys):
     """
@@ -245,8 +290,10 @@ def remove_items(array, keys):
 
 def dual_map(lambda_call, list1, list2):
     if len(list1) > len(list2):
-        raise Exception('list1 has more elements than list2: {0} versus {1}'.format(list1, list2))
-    return [lambda_call(val1, val2) for val1, val2 in izip(list1, list2)]
+        raise Exception(
+            "list1 has more elements than list2: {0} versus {1}".format(list1, list2)
+        )
+    return [lambda_call(val1, val2) for val1, val2 in zip(list1, list2)]
 
 
 def dual_map_to_dict(lambda_call, list1, list2):
@@ -259,23 +306,27 @@ def dual_map_to_dict(lambda_call, list1, list2):
     :return: A dictionary
     """
     if len(list1) > len(list2):
-        raise Exception('list1 has more elements than list2: {0} versus {1}'.format(list1, list2))
+        raise Exception(
+            "list1 has more elements than list2: {0} versus {1}".format(list1, list2)
+        )
     return map_to_dict(
         lambda index_and_val: lambda_call(index_and_val[1], list2[index_and_val[0]]),
-        enumerate(list1))
+        enumerate(list1),
+    )
 
 
 def map_dict(lambda_call, dct):
     """
-        Maps the dict to key values.
+    Maps the dict to key values.
 
-        lambda_call takes each item and must returns a key and value as a tuple or list
+    lambda_call takes each item and must returns a key and value as a tuple or list
     """
-    return map(lambda tup: lambda_call(tup[0], tup[1]), dct.iteritems())
+    return map(lambda tup: lambda_call(tup[0], tup[1]), dct.items())
+
 
 def compact(list):
     """
-        Removes null items from a list
+    Removes null items from a list
     """
     results = []
     for item in list:
@@ -292,6 +343,7 @@ def compact_kwargs(**kwargs):
     """
     return compact_dict(kwargs)
 
+
 def compact_dict(dictionary):
     """
         Removes any key where the key or value of the dict that are null (0, [], etc are not excluded), returning a new dict
@@ -299,21 +351,22 @@ def compact_dict(dictionary):
     :return:
     """
     results = {}
-    for key, value in dictionary.iteritems():
+    for key, value in dictionary.items():
         if value != None and key:
             results[key] = value
     return results
 
+
 def map_to_dict(lambda_call, list, use_ordered_dict=False):
     """
-        Maps the list to key values.
+    Maps the list to key values.
 
-        lambda_call takes each item and must returns a key and value as a tuple or list
-        If the returned value is null the item is omitted from the result dictionary.
-        Like map, lambda is given optinally a second argument, the index of the list
-        :param lambda_call: Called on each item. Should return a two element array
-        :param list: The list
-        :param use_ordered_dict: Default False, set True to use an OrderedDict to preserve order
+    lambda_call takes each item and must returns a key and value as a tuple or list
+    If the returned value is null the item is omitted from the result dictionary.
+    Like map, lambda is given optinally a second argument, the index of the list
+    :param lambda_call: Called on each item. Should return a two element array
+    :param list: The list
+    :param use_ordered_dict: Default False, set True to use an OrderedDict to preserve order
     """
     results = collections.OrderedDict() if use_ordered_dict else {}
     has_two_args = lambda_call.__code__.co_argcount == 2
@@ -330,16 +383,17 @@ def map_to_dict(lambda_call, list, use_ordered_dict=False):
 
 def map_dict_to_dict(lambda_call, dictionary):
     """
-        Maps the list to key values.
+    Maps the list to key values.
 
-        lambda_call takes each a key and value and must returns a key and value as a tuple or list
+    lambda_call takes each a key and value and must returns a key and value as a tuple or list
     """
     results = {}
-    for key, value in dictionary.iteritems():
+    for key, value in dictionary.items():
         result_pair = lambda_call(key, value)
         if result_pair:
             results[result_pair[0]] = result_pair[1]
     return results
+
 
 def map_dict_value(lambda_call, dictionary):
     """
@@ -349,6 +403,7 @@ def map_dict_value(lambda_call, dictionary):
     :return: A dictionary with the keys unchanged but values mapped
     """
     return map_dict_to_dict(lambda key, value: [key, lambda_call(value)], dictionary)
+
 
 def map_to_keyed_collections(lambda_call, list):
     """
@@ -370,6 +425,7 @@ def map_to_keyed_collections(lambda_call, list):
         result[key].append(obj)
     return result
 
+
 def map_dict_to_dict_with_lists(lambda_call, dict):
     """
         Map each dict key value with a lambda call to a [item1, item2] array
@@ -387,6 +443,7 @@ def map_dict_to_dict_with_lists(lambda_call, dict):
         else:
             result[result_key] = [result_val]
     return result
+
 
 def map_to_dict_with_lists(lambda_call, list):
     """
@@ -406,13 +463,14 @@ def map_to_dict_with_lists(lambda_call, list):
             result[key] = [val]
     return result
 
+
 def flatten_values(dct):
     """
         Flattens the values of a dict containing arrays for values (the result of map_to_keyed_collections)
     :param dct:  e.g. {'a':[1,2,3],'b':[3,4,5]}
     :return: [1,2,3,3,4,5]
     """
-    return flatten([v for k, v in dct.iteritems()])
+    return flatten([v for k, v in dct.items()])
 
 
 def flat_map_values(lambda_call, dct):
@@ -422,7 +480,7 @@ def flat_map_values(lambda_call, dct):
     :param dct:
     :return:
     """
-    return flatten([lambda_call(k, v) for k, v in dct.iteritems()])
+    return flatten([lambda_call(k, v) for k, v in dct.items()])
 
 
 def filter_dict(lambda_call, dictionary):
@@ -432,7 +490,9 @@ def filter_dict(lambda_call, dictionary):
     :param dictionary:
     :return:
     """
-    return dict((key, value) for key, value in dictionary.iteritems() if lambda_call(key, value))
+    return dict(
+        (key, value) for key, value in dictionary.items() if lambda_call(key, value)
+    )
 
 
 def get_value_of_first_matching_key(filter_lambda, dct, default=None):
@@ -443,16 +503,17 @@ def get_value_of_first_matching_key(filter_lambda, dct, default=None):
     :param default:
     :return:
     """
-    for key, value in dct.iteritems():
+    for key, value in dct.items():
         if filter_lambda(key, value):
             return value
     return default
 
+
 def map_to_2d_dict(outer_lambda, inner_lambda, list):
     """
-        Create a 2D dictionary from the list
-        outer_lambda should return a single item, the outer hash key
-        inner_lambda should return a pair, the inner hash key and the value
+    Create a 2D dictionary from the list
+    outer_lambda should return a single item, the outer hash key
+    inner_lambda should return a pair, the inner hash key and the value
     """
     results = {}
     for item in list:
@@ -471,6 +532,7 @@ def first(f, seq):
         if f(item):
             return item
 
+
 def map_first(f, seq):
     """Return first mapped item in sequence where f(item) is not None"""
     for item in seq:
@@ -478,25 +540,28 @@ def map_first(f, seq):
         if val:
             return val
 
+
 def map_dict_first(f, dct):
     """Return first mapped item in sequence where f(item) is not None"""
-    for key, value in dct.iteritems():
+    for key, value in dct.items():
         val = f(key, value)
         if val:
             return val
 
+
 def flatten(list_of_lists):
     """
-        Shallow flatten a multi-dimensional list, meaning the top two dimensions are flattened and deeper ones are ignored
+    Shallow flatten a multi-dimensional list, meaning the top two dimensions are flattened and deeper ones are ignored
     """
     return list(chain.from_iterable(list_of_lists))
 
 
 def flat_map(map_lambda, list):
     """
-        Map a list to a list of lists and flatten the results
+    Map a list to a list of lists and flatten the results
     """
     return flatten(map(map_lambda, list))
+
 
 def flat_map_dict(map_dict_lambda, dct):
     """
@@ -509,14 +574,17 @@ def flat_map_dict(map_dict_lambda, dct):
 
 
 def unique(seq, idfun=None):
-# order preserving
+    # order preserving
     if idfun is None:
-        def idfun(x): return x
+
+        def idfun(x):
+            return x
+
     seen = {}
     result = []
     for item in seq:
         marker = idfun(item)
-        if (not marker in seen):
+        if not marker in seen:
             seen[marker] = 1
             result.append(item)
     return result
@@ -537,6 +605,7 @@ def get_single_value_or_none(list):
     """
     return list[0] if len(list) == 1 else None
 
+
 def get_first_value_or_none(list):
     """
         Get the first value of a list or None if no items exist
@@ -544,6 +613,7 @@ def get_first_value_or_none(list):
     :return:
     """
     return list[0] if len(list) > 0 else None
+
 
 def get_single_value_or_create(list, construct):
     """
@@ -563,6 +633,7 @@ def list_or_none_if_empty(list):
     """
     return get_list_or_if_empty(list, lambda: None)
 
+
 def get_list_or_if_empty(list, default_lambda, not_empty_lambda=lambda lst: lst):
     """
         Returns teh given list if not-empty or calls the default_lambda and returns the results of it
@@ -572,6 +643,7 @@ def get_list_or_if_empty(list, default_lambda, not_empty_lambda=lambda lst: lst)
     :return:
     """
     return not_empty_lambda(list) if len(list) > 0 else default_lambda()
+
 
 class TooManyFoundException(Exception):
     pass
@@ -583,7 +655,9 @@ def one_or_none(list):
     :return: the single item or None
     """
     if len(list) > 1:
-        raise TooManyFoundException("Expected 0 or 1 result but found {0}. Found: {1}".format(len(list), list))
+        raise TooManyFoundException(
+            "Expected 0 or 1 result but found {0}. Found: {1}".format(len(list), list)
+        )
     return list[0] if len(list) == 1 else None
 
 
@@ -594,7 +668,9 @@ def deep_copy_dict_structure(dct, convert_objects=False):
     :param convert_objects: Default False. Object instances are normally copied without altercation. If this is set to True then the __dict__ property will be used for the copy. This is removes the evidence of the class but is useful for converting to a simple dict/list/primitive structure
     :return:
     """
-    return map_dict_to_dict(lambda key, value: [key, my_deep_copy(value, convert_objects)], dct)
+    return map_dict_to_dict(
+        lambda key, value: [key, my_deep_copy(value, convert_objects)], dct
+    )
 
 
 def deep_copy_array_structure(array, convert_objects=False):
@@ -606,7 +682,7 @@ def my_deep_copy(value, convert_objects=False):
         return deep_copy_dict_structure(value, convert_objects)
     elif is_list_or_tuple(value):
         return deep_copy_array_structure(value, convert_objects)
-    elif convert_objects and hasattr(value, '__dict__'):
+    elif convert_objects and hasattr(value, "__dict__"):
         # Attempt to handle objects
         return deep_copy_dict_structure(value.__dict__, convert_objects)
     else:
@@ -616,20 +692,23 @@ def my_deep_copy(value, convert_objects=False):
 
 def type_wrap(value, wrapper_lambdas):
     """
-        Wraps the value using one of the wrapper_lambdas or returns value if no match is found
-        :param value:
-        :param wrapper_lambdas: dict of lambda wrappers, keyed by the type they should wrap. These wrappers can wrap all dict values and the outer dict. They can match the dict class itself or any other class. The wrapper will be looked up using wrapper_lambdas.get([type(value)], get_first(filter(lambda wrapper_key: isinstance(value, wrapper_key), wrapper_lambdas.keys()), deep_map_dict_structure(value)) so that if an exact match isn't found the keys will be searched for a parent class. If no match is found the value is returned as is
-        :param the optional container of the value, for use by the lambda, which takes it as an optional second value
-        :return:
+    Wraps the value using one of the wrapper_lambdas or returns value if no match is found
+    :param value:
+    :param wrapper_lambdas: dict of lambda wrappers, keyed by the type they should wrap. These wrappers can wrap all dict values and the outer dict. They can match the dict class itself or any other class. The wrapper will be looked up using wrapper_lambdas.get([type(value)], get_first(filter(lambda wrapper_key: isinstance(value, wrapper_key), wrapper_lambdas.keys()), deep_map_dict_structure(value)) so that if an exact match isn't found the keys will be searched for a parent class. If no match is found the value is returned as is
+    :param the optional container of the value, for use by the lambda, which takes it as an optional second value
+    :return:
     """
     # Try a direct key type match
-    x = wrapper_lambdas.get(type(value),
-                            # else lookup by inheritance.
-                            get_value_of_first_matching_key(
-                                lambda wrapper_key, wrapper_value: isinstance(value, wrapper_key),
-                                wrapper_lambdas,
-                                # else return value
-                                lambda value: value))(value)
+    x = wrapper_lambdas.get(
+        type(value),
+        # else lookup by inheritance.
+        get_value_of_first_matching_key(
+            lambda wrapper_key, wrapper_value: isinstance(value, wrapper_key),
+            wrapper_lambdas,
+            # else return value
+            lambda value: value,
+        ),
+    )(value)
     return x
 
 
@@ -642,17 +721,25 @@ def deep_map_dict_structure(dcts_or_dct, wrapper_lambdas):
     """
     # Map the one or multiple items and return one or multiple items respectively
     return to_single_if_one_item(
-        map(lambda dct_or_obj:
+        map(
+            lambda dct_or_obj:
             # Map the dict to a transformed dict and type wrap, or if the value is not a dict, just type wrap it
             type_wrap(
-                map_dict_to_dict(
-                    lambda key, value:
-                    # Either recurse on dicts or type_wrap non dicts and return them.
-                    [key, deep_map_dict_structure(value, wrapper_lambdas)],
-                    dct_or_obj) if isinstance(dct_or_obj, dict) else
-                dct_or_obj,
-                wrapper_lambdas),
-            to_list(dcts_or_dct)))
+                (
+                    map_dict_to_dict(
+                        lambda key, value:
+                        # Either recurse on dicts or type_wrap non dicts and return them.
+                        [key, deep_map_dict_structure(value, wrapper_lambdas)],
+                        dct_or_obj,
+                    )
+                    if isinstance(dct_or_obj, dict)
+                    else dct_or_obj
+                ),
+                wrapper_lambdas,
+            ),
+            to_list(dcts_or_dct),
+        )
+    )
 
 
 def resolve_property(obj, property):
@@ -674,9 +761,15 @@ def map_property(dicts_or_objs, property):
     :param property: a string representing the attribute or dict key
     :return: The values of the property for each list or dict
     """
-    return map(lambda dict_or_obj:
-               dict_or_obj.get(property) if isinstance(dict_or_obj, dict) else resolve_property(dict_or_obj, property),
-               dicts_or_objs)
+    return map(
+        lambda dict_or_obj: (
+            dict_or_obj.get(property)
+            if isinstance(dict_or_obj, dict)
+            else resolve_property(dict_or_obj, property)
+        ),
+        dicts_or_objs,
+    )
+
 
 def get_first(list, default=None):
     """
@@ -686,6 +779,7 @@ def get_first(list, default=None):
     :return:
     """
     return (list[:1] or [default])[0]
+
 
 def get_first_map(map_lambda, list):
     """
@@ -699,6 +793,7 @@ def get_first_map(map_lambda, list):
         if result:
             return result
 
+
 def accumulate(accumulate_lambda, target, list):
     """
         TODO this exists in python 3
@@ -711,24 +806,28 @@ def accumulate(accumulate_lambda, target, list):
     :return:
     """
     if len(list) > 0:
-        return accumulate(accumulate_lambda, accumulate_lambda(target, list[0]), list[1:])
+        return accumulate(
+            accumulate_lambda, accumulate_lambda(target, list[0]), list[1:]
+        )
     else:
         return target
 
+
 def unfold_until(x, f, until):
     """
-        Opposite of accumulate. http://www.reddit.com/r/programming/comments/65bpf/unfold_in_python
-        Returns a list from a single accumulated variable x
-        :param x: The starting value
-        :param f: The function to extract the from x. Ends when the function returns None
-        :param until: The function to test for x and each f(x) whether or not to end. The result that returns true
-        is included as the last result
+    Opposite of accumulate. http://www.reddit.com/r/programming/comments/65bpf/unfold_in_python
+    Returns a list from a single accumulated variable x
+    :param x: The starting value
+    :param f: The function to extract the from x. Ends when the function returns None
+    :param until: The function to test for x and each f(x) whether or not to end. The result that returns true
+    is included as the last result
     """
 
     if until(x):
         return [x]
     result = f(x)
     return [x] + unfold_until(result, f, until)
+
 
 def all_existing_classes_subclass(dct_or_obj, **kwargs):
     """
@@ -739,12 +838,22 @@ def all_existing_classes_subclass(dct_or_obj, **kwargs):
     :return: True if all match
     """
     for key, sub_class in kwargs.items():
-        base_class = dct_or_obj.get(key, None) if isinstance(dct_or_obj, dict) else getattr(dct_or_obj, key)
-        if sub_class and base_class and not any_true(
-            lambda sub_cls: issubclass(sub_cls, base_class), sub_class if is_list_or_tuple(sub_class) else [sub_class]
+        base_class = (
+            dct_or_obj.get(key, None)
+            if isinstance(dct_or_obj, dict)
+            else getattr(dct_or_obj, key)
+        )
+        if (
+            sub_class
+            and base_class
+            and not any_true(
+                lambda sub_cls: issubclass(sub_cls, base_class),
+                sub_class if is_list_or_tuple(sub_class) else [sub_class],
+            )
         ):
             return False
     return True
+
 
 def all_existing_keys_match(fixture, **kwargs):
     """
@@ -756,24 +865,33 @@ def all_existing_keys_match(fixture, **kwargs):
     You may optionally specify a special 'non_matches' with a list of keys that should not match instead
     :return: True if all match
     """
-    for key, value in remove_keys(kwargs, 'non_matches').items():
-        matching_value = fixture.get(key, None) if isinstance(fixture, dict) else getattr(fixture, key)
+    for key, value in remove_keys(kwargs, "non_matches").items():
+        matching_value = (
+            fixture.get(key, None)
+            if isinstance(fixture, dict)
+            else getattr(fixture, key)
+        )
         # Only filter out if both the kwarg value and fixture value are non-null, and matching_value fails
         # to match value or fails to be in value if value is a list (or succeeds if the key is in non_matches)
         if value and matching_value:
             if is_list_or_tuple(value):
-                if value in list if \
-                   key in kwargs.get('non_matches', []) else \
-                   value not in list:
+                if (
+                    value in list
+                    if key in kwargs.get("non_matches", [])
+                    else value not in list
+                ):
                     return False
 
             else:
-                if matching_value == value if \
-                   key in kwargs.get('non_matches', []) else \
-                   matching_value != value:
+                if (
+                    matching_value == value
+                    if key in kwargs.get("non_matches", [])
+                    else matching_value != value
+                ):
                     return False
 
     return True
+
 
 def reverse_dict(dct):
     """
@@ -781,7 +899,8 @@ def reverse_dict(dct):
     :param dct:
     :return:
     """
-    return dict((v,k) for k, v in dct.iteritems())
+    return dict((v, k) for k, v in dct.items())
+
 
 def dict_to_list_or_tuple(dct, type):
     """
@@ -793,4 +912,4 @@ def dict_to_list_or_tuple(dct, type):
     list = []
     for key, value in dct.items():
         list.insert(key, value)
-    return tuple(list) if type==tuple else list
+    return tuple(list) if type == tuple else list

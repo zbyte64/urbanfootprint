@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -20,7 +19,15 @@ from django.db import connection
 from inflection import titleize
 from picklefield import PickledObjectField
 
-from footprint.main.lib.functions import map_dict, accumulate, map_to_dict, merge, unique, remove_keys, one_or_none
+from footprint.main.lib.functions import (
+    map_dict,
+    accumulate,
+    map_to_dict,
+    merge,
+    unique,
+    remove_keys,
+    one_or_none,
+)
 from footprint.main.managers.geo_inheritance_manager import GeoInheritanceManager
 from footprint.main.mixins.categories import Categories
 from footprint.main.mixins.cloneable import Cloneable
@@ -33,7 +40,9 @@ from footprint.main.mixins.timestamps import Timestamps
 from footprint.main.models.feature.feature_class_creator import FeatureClassCreator
 from footprint.main.models.feature.feature_field_mixin import FeatureFieldMixin
 from footprint.main.models.geospatial.behavior import Behavior, BehaviorKey
-from footprint.main.models.geospatial.feature_class_configuration import FeatureClassConfiguration
+from footprint.main.models.geospatial.feature_class_configuration import (
+    FeatureClassConfiguration,
+)
 from footprint.main.models.geospatial.geometry_type_keys import GeometryTypeKey
 from footprint.main.models.geospatial.intersection import Intersection
 from footprint.main.models.keys.keys import Keys
@@ -41,24 +50,29 @@ from footprint.main.utils.model_utils import model_dict
 from footprint.main.utils.utils import resolve_module_attr
 from footprint.uf_tools import dictfetchall
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 logger = logging.getLogger(__name__)
 
-class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneable, Permissions, FeatureFieldMixin):
 
+class DbEntity(
+    SharedKey,
+    Name,
+    Categories,
+    Tags,
+    Timestamps,
+    Deletable,
+    Cloneable,
+    Permissions,
+    FeatureFieldMixin,
+):
     """
-        Represents a database-derived entity, such as a table, view, or query result. Entities may have tags to help entity_configs that may be interested in them. The relationships between db_entities and entity_configs are registered by the DbEntityInterest class, which also defines the type of interest. Some db_entities are "owned" by one entity_config, while others might simply have an "observe" or "edit" or "dependency" relationship. These roles will be figured out later. The key indicates a specific function of the db_entity, such as "base" to indicate a table used for base data. Tags are broader descriptors, such as "university", used for categorization or queries. DbEntities use the SharedKey mixin to permit multiple DbEntities in the same context (e.g. those of a particular ConfigEntity interest) to share a key. This permits the user to assign multiple tables of the same key (e.g. 'base') to a ConfigEntity instance.
-        TODO Tags are moving the FeatureFunction. They are depricated here
+    Represents a database-derived entity, such as a table, view, or query result. Entities may have tags to help entity_configs that may be interested in them. The relationships between db_entities and entity_configs are registered by the DbEntityInterest class, which also defines the type of interest. Some db_entities are "owned" by one entity_config, while others might simply have an "observe" or "edit" or "dependency" relationship. These roles will be figured out later. The key indicates a specific function of the db_entity, such as "base" to indicate a table used for base data. Tags are broader descriptors, such as "university", used for categorization or queries. DbEntities use the SharedKey mixin to permit multiple DbEntities in the same context (e.g. those of a particular ConfigEntity interest) to share a key. This permits the user to assign multiple tables of the same key (e.g. 'base') to a ConfigEntity instance.
+    TODO Tags are moving the FeatureFunction. They are depricated here
     """
+
     class Meta(object):
         abstract = False
-        app_label = 'main'
-        # Custom permissions in addition to the default add, change, delete
-        permissions = (
-            ('view_dbentity', 'View DbEntity'),
-            # Permission to approve or reject feature updates to the DbEntity
-            ('approve_dbentity', 'Approve DbEntity'),
-        )
+        app_label = "main"
 
     objects = GeoInheritanceManager()
 
@@ -75,19 +89,33 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
     source_db_entity_key = models.CharField(max_length=50, null=True)
 
     # The user who created the db_entity
-    creator = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, related_name='db_entity_creator')
+    creator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=False,
+        related_name="db_entity_creator",
+        on_delete=models.PROTECT,
+    )
     # The user who last updated the db_entity
-    updater = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, related_name='db_entity_updater')
+    updater = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=False,
+        related_name="db_entity_updater",
+        on_delete=models.PROTECT,
+    )
 
     # Describes how to configure the features of the table
     # This is currently a dict but will be come a first-class FeatureClassConfiguration
     feature_class_configuration = PickledObjectField(null=True)
+
     @property
     def feature_class_configuration_as_dict(self):
         return self.feature_class_configuration.__dict__
+
     @feature_class_configuration_as_dict.setter
     def feature_class_configuration_as_dict(self, value):
-        self.feature_class_configuration = FeatureClassConfiguration(**value) if isinstance(value, dict) else value
+        self.feature_class_configuration = (
+            FeatureClassConfiguration(**value) if isinstance(value, dict) else value
+        )
 
     # Tracks post save publishing process for new DbEntities
     # This would be better handled with statuses, but tracking percent is the only
@@ -104,7 +132,6 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         :return:
         """
         return self.feature_class(id=0)
-
 
     def feature_attribute(self, attribute):
         """
@@ -131,6 +158,7 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
     # until after save. Then we use it to add the categories ot our DbEntity
     # This nonsense will go away when we stop using classes for fixtures
     __categories = None
+
     @property
     def _categories(self):
         return self.__categories
@@ -140,6 +168,7 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         self.__categories = value
 
     __tags = None
+
     @property
     def _tags(self):
         return self.__tags
@@ -152,9 +181,14 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
     @property
     def layer(self):
         from footprint.main.models.presentation.layer.layer import Layer
+
         try:
-            return one_or_none(self.db_entity_interest_owner.presentationmedium_set.all().select_subclasses(Layer))
-        except Exception, e:
+            return one_or_none(
+                self.db_entity_interest_owner.presentationmedium_set.all().select_subclasses(
+                    Layer
+                )
+            )
+        except Exception as e:
             logger.warn(e.message)
 
     def save(self, force_insert=False, force_update=False, using=None):
@@ -178,7 +212,12 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
             # Otherwise there is nothing to do, since no attribute ever changes
             from footprint.main.models.config.db_entity_interest import DbEntityInterest
             from footprint.main.models.config.interest import Interest
-            db_entity_interest = DbEntityInterest(db_entity=self, config_entity=self._config_entity, interest=Interest.objects.get(key=Keys.INTEREST_OWNER))
+
+            db_entity_interest = DbEntityInterest(
+                db_entity=self,
+                config_entity=self._config_entity,
+                interest=Interest.objects.get(key=Keys.INTEREST_OWNER),
+            )
             db_entity_interest.save()
             self._config_entity = None
 
@@ -190,7 +229,10 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
             return None
         feature_behaviors = self.featurebehavior_set.all()
         if len(feature_behaviors) > 1:
-            raise Exception("Expected exactly one FeatureBehavior for DbEntity %s, but found %s" % (self, len(feature_behaviors)))
+            raise Exception(
+                "Expected exactly one FeatureBehavior for DbEntity %s, but found %s"
+                % (self, len(feature_behaviors))
+            )
         return feature_behaviors[0] if len(feature_behaviors) == 1 else None
 
     @feature_behavior.setter
@@ -199,49 +241,60 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
 
     def has_behavior(self, behavior):
         """
-            Returns True if feature_behavior.behavior is or has a parent matching the given behavior
-            :param behavior: Behavior instance to match on
+        Returns True if feature_behavior.behavior is or has a parent matching the given behavior
+        :param behavior: Behavior instance to match on
         """
         if not self.feature_behavior:
             logger.warn("Corrupt DbEntity %s. Has no feature_behavior" % self.full_name)
             return False
-        return self.feature_behavior and self.feature_behavior.behavior.has_behavior(behavior)
+        return self.feature_behavior and self.feature_behavior.behavior.has_behavior(
+            behavior
+        )
 
     def has_behavior_key(self, behavior_key):
         """
-            Returns True if feature_behavior.behavior is or has a parent matching the Behavior matching behavior_key
-            :param behavior_key: key of Behavior instance to match on
+        Returns True if feature_behavior.behavior is or has a parent matching the Behavior matching behavior_key
+        :param behavior_key: key of Behavior instance to match on
         """
         if not self.feature_behavior:
             logger.warn("Corrupt DbEntity %s. Has no feature_behavior" % self.full_name)
             return False
-        return self.feature_behavior.behavior.has_behavior(Behavior.objects.get(key=behavior_key))
-
+        return self.feature_behavior.behavior.has_behavior(
+            Behavior.objects.get(key=behavior_key)
+        )
 
     @property
     def subclassed_feature_behavior(self):
         """
-            Caches the subclass instance for speed
+        Caches the subclass instance for speed
         """
         if not self.feature_behavior:
             return None
         id = self.feature_behavior.id
         if not DbEntity._subclassed_feature_behavior:
-            from footprint.main.models.geospatial.feature_behavior import FeatureBehavior
-            DbEntity._subclassed_feature_behavior[id] = FeatureBehavior.objects.get_subclass(id=id)
+            from footprint.main.models.geospatial.feature_behavior import (
+                FeatureBehavior,
+            )
+
+            DbEntity._subclassed_feature_behavior[id] = (
+                FeatureBehavior.objects.get_subclass(id=id)
+            )
         return DbEntity._subclassed_feature_behavior[id]
+
     _subclassed_feature_behavior = {}
 
     # The object that describes the functionality of the feature data, that being what it is used for.
     # FeatureBehavior is an association of the DbEntity and a Behavior.
     # For now the relationship between FeatureBehavior and Behavior is OneToOne, defined on the FeatureBehavior side
     # For the clone case pass a zeroed out version of the intersection
-    def update_or_create_feature_behavior(self, configured_feature_behavior, cloned_intersection=None):
+    def update_or_create_feature_behavior(
+        self, configured_feature_behavior, cloned_intersection=None
+    ):
         """
-            Used when creating or updating the db_entity for a ConfigEntity.
-            This will update or create the the Behavior associated with the FeatureBehavior
-            and then update or create the FeatureBehavior associating it to the DbEntity
-            and Behavior
+        Used when creating or updating the db_entity for a ConfigEntity.
+        This will update or create the the Behavior associated with the FeatureBehavior
+        and then update or create the FeatureBehavior associating it to the DbEntity
+        and Behavior
         """
 
         try:
@@ -250,14 +303,22 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         except:
             existing_feature_behavior = None
 
-        logger.debug("For DbEntity %s, update_or_create_feature_behavior. Existing feature behavior: %s, feature behavior: %s" % (self.name, existing_feature_behavior, configured_feature_behavior))
+        logger.debug(
+            "For DbEntity %s, update_or_create_feature_behavior. Existing feature behavior: %s, feature behavior: %s"
+            % (self.name, existing_feature_behavior, configured_feature_behavior)
+        )
 
         if not configured_feature_behavior:
             if not self.feature_behavior:
                 # Set a sensible default
-                from footprint.main.models.geospatial.feature_behavior import FeatureBehavior
+                from footprint.main.models.geospatial.feature_behavior import (
+                    FeatureBehavior,
+                )
+
                 configured_feature_behavior = FeatureBehavior(
-                    behavior=Behavior.objects.get(key=BehaviorKey.Fab.ricate('reference'))
+                    behavior=Behavior.objects.get(
+                        key=BehaviorKey.Fab.ricate("reference")
+                    )
                 )
             else:
                 # If we have one but nothing is passed in return the existing one
@@ -266,19 +327,30 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         # First find the stored Behavior represented by feature_behavior.behavior
         # If given a persisted instance use that, otherwise resolve by key
         try:
-            behavior = configured_feature_behavior.behavior if \
-                configured_feature_behavior.behavior.id else \
-                Behavior.objects.get(key=configured_feature_behavior.behavior.key)
-        except Exception, e:
-            raise Exception("Could not find Behavior with key %s. Exception message %s" % (configured_feature_behavior.behavior.key, e.message))
+            behavior = (
+                configured_feature_behavior.behavior
+                if configured_feature_behavior.behavior.id
+                else Behavior.objects.get(key=configured_feature_behavior.behavior.key)
+            )
+        except Exception as e:
+            raise Exception(
+                "Could not find Behavior with key %s. Exception message %s"
+                % (configured_feature_behavior.behavior.key, e.message)
+            )
 
         # Check and see if a FeatureBehavior for the DbEntity is defined and doesn't match that defined
         # in the given feature_behavior. If they don't equate we need to delete the existing
         # feature_behavior. Throw an error if that's disallowed by the DbEntity
         if existing_feature_behavior and existing_feature_behavior.behavior != behavior:
             if self.behavior_locked:
-                raise Exception("Attempt to change locked behavior on DbEntity %s from Behavior %s to Behavior %s" %
-                                (self.full_name, self.feature_behavior.behavior.name, behavior.name))
+                raise Exception(
+                    "Attempt to change locked behavior on DbEntity %s from Behavior %s to Behavior %s"
+                    % (
+                        self.full_name,
+                        self.feature_behavior.behavior.name,
+                        behavior.name,
+                    )
+                )
             existing_feature_behavior.delete()
             existing_feature_behavior = None
 
@@ -287,18 +359,25 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
             # If we still have a valid existing feature_behavior have it conform to anything about the Behavior
             # configuration that might have changed.
             updated_existing_feature_behavior = existing_feature_behavior
-            template_feature_behavior = behavior.feature_behavior_from_behavior_template()
+            template_feature_behavior = (
+                behavior.feature_behavior_from_behavior_template()
+            )
             existing_intersection = existing_feature_behavior.intersection_subclassed
             # If cloning set the id to None
             if existing_intersection and not updated_existing_feature_behavior.id:
                 existing_intersection.id = None
-            logger.debug("Existing Intersection: %s" % model_dict(existing_intersection, include_primary_key=True))
+            logger.debug(
+                "Existing Intersection: %s"
+                % model_dict(existing_intersection, include_primary_key=True)
+            )
             # TODO this seems problematic. The existing FeatureBehavior's tags should take precedence over the
             # Behavior's unless the former has no tags
             updated_existing_feature_behavior._tags = template_feature_behavior._tags
         else:
             # Get a new instance from the Behavior
-            updated_existing_feature_behavior = behavior.feature_behavior_from_behavior_template()
+            updated_existing_feature_behavior = (
+                behavior.feature_behavior_from_behavior_template()
+            )
         updated_existing_feature_behavior.set_defaults()
 
         # Intersection properties are defined on the Behavior and possibly extended or overridden on the FeatureBehavior
@@ -309,28 +388,45 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
                 model_dict(updated_existing_feature_behavior.intersection_subclassed),
                 model_dict(configured_feature_behavior.intersection_subclassed),
             ),
-            ['is_template']
+            ["is_template"],
         )
         logger.debug("Intersection after merge %s" % intersection_dict)
         # Get or create the intersection instance based on the subclass of the source(s)
-        intersection_class = \
-            (configured_feature_behavior and configured_feature_behavior.intersection_subclassed and configured_feature_behavior.intersection_subclassed.__class__) or\
-            (updated_existing_feature_behavior and updated_existing_feature_behavior.intersection and updated_existing_feature_behavior.intersection_subclassed.__class__)
+        intersection_class = (
+            configured_feature_behavior
+            and configured_feature_behavior.intersection_subclassed
+            and configured_feature_behavior.intersection_subclassed.__class__
+        ) or (
+            updated_existing_feature_behavior
+            and updated_existing_feature_behavior.intersection
+            and updated_existing_feature_behavior.intersection_subclassed.__class__
+        )
         intersection = intersection_class()
         # Update to match the settings
-        intersection.__dict__.update(
-            intersection_dict
-        )
+        intersection.__dict__.update(intersection_dict)
         if intersection.__class__ == Intersection:
-            raise Exception("Expected subclass: %s %s %s" % (intersection_dict, configured_feature_behavior.intersection_subclassed, updated_existing_feature_behavior.intersection_subclassed))
+            raise Exception(
+                "Expected subclass: %s %s %s"
+                % (
+                    intersection_dict,
+                    configured_feature_behavior.intersection_subclassed,
+                    updated_existing_feature_behavior.intersection_subclassed,
+                )
+            )
         # Now that we've updated everything, set the id if we already had an Intersection
         intersection.id = existing_intersection.id if existing_intersection else None
         intersection.save()
 
         # Merge the tags from existing and configurations
-        tags = unique((list(updated_existing_feature_behavior.tags.all()) if updated_existing_feature_behavior.pk else []) + \
-                      updated_existing_feature_behavior._tags + \
-                      configured_feature_behavior._tags)
+        tags = unique(
+            (
+                list(updated_existing_feature_behavior.tags.all())
+                if updated_existing_feature_behavior.pk
+                else []
+            )
+            + updated_existing_feature_behavior._tags
+            + configured_feature_behavior._tags
+        )
         configured_feature_behavior._tags = tags
 
         # Update or create and set to the attributes of the passed in instance
@@ -340,25 +436,49 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
             # Merge defaults for the template with passed in values
             # on both the Behavior and FeatureBehavior
             defaults=merge(
-                model_dict(updated_existing_feature_behavior, omit_fields=['behavior', 'db_entity', 'intersection']),
-                model_dict(configured_feature_behavior, omit_fields=['behavior', 'db_entity', 'intersection']),
-                dict(intersection=intersection) if intersection else dict())
-        )[0]
+                model_dict(
+                    updated_existing_feature_behavior,
+                    omit_fields=["behavior", "db_entity", "intersection"],
+                ),
+                model_dict(
+                    configured_feature_behavior,
+                    omit_fields=["behavior", "db_entity", "intersection"],
+                ),
+                dict(intersection=intersection) if intersection else dict(),
+            ),
+        )[
+            0
+        ]
         if not updated_existing_feature_behavior.intersection:
             raise Exception("No Intersection for %s" % self)
         from footprint.main.models.geospatial.feature_behavior import FeatureBehavior
-        if FeatureBehavior.objects.filter(intersection=updated_existing_feature_behavior.intersection).count() > 1:
-            raise Exception("For some reason the intersection %s:%s is shared by the following FeatureBehaviors %s. This should never happen." %(
-                updated_existing_feature_behavior.intersection_subclassed.__class__.__name__,
-                updated_existing_feature_behavior.intersection.id,
-                map(lambda feature_behavior: feature_behavior.db_entity.key, FeatureBehavior.objects.filter(intersection=updated_existing_feature_behavior.intersection))
-            ))
+
+        if (
+            FeatureBehavior.objects.filter(
+                intersection=updated_existing_feature_behavior.intersection
+            ).count()
+            > 1
+        ):
+            raise Exception(
+                "For some reason the intersection %s:%s is shared by the following FeatureBehaviors %s. This should never happen."
+                % (
+                    updated_existing_feature_behavior.intersection_subclassed.__class__.__name__,
+                    updated_existing_feature_behavior.intersection.id,
+                    map(
+                        lambda feature_behavior: feature_behavior.db_entity.key,
+                        FeatureBehavior.objects.filter(
+                            intersection=updated_existing_feature_behavior.intersection
+                        ),
+                    ),
+                )
+            )
         # Handle associations that can't be saved during the main save
-        updated_existing_feature_behavior.update_or_create_associations(configured_feature_behavior)
+        updated_existing_feature_behavior.update_or_create_associations(
+            configured_feature_behavior
+        )
         # Set without saving
         self.feature_behavior = updated_existing_feature_behavior
         return updated_existing_feature_behavior
-
 
     @property
     def full_table_name(self):
@@ -371,16 +491,20 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
     @property
     def full_name(self):
         """
-            Returns the name of the DbEntity with the titleized schema to distinguish it
+        Returns the name of the DbEntity with the titleized schema to distinguish it
         """
-        return "{0} for {1}".format(self.name, titleize(self.schema) if self.schema else 'Global Config')
+        return "{0} for {1}".format(
+            self.name, titleize(self.schema) if self.schema else "Global Config"
+        )
 
     def resolve_abstract_feature_class(self):
         """
-            Extracts the abstract Feature class from the DbEntity configuration
-            :return The abstract class or None if not configured
+        Extracts the abstract Feature class from the DbEntity configuration
+        :return The abstract class or None if not configured
         """
-        abstract_class_path = self.feature_class_configuration.abstract_class_name or None
+        abstract_class_path = (
+            self.feature_class_configuration.abstract_class_name or None
+        )
         return resolve_module_attr(abstract_class_path) if abstract_class_path else None
 
     @property
@@ -400,9 +524,10 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         # Query by ST_GeometryType and take the first result.
         # We currently expect feature tables to have only one type
         return GeometryTypeKey.postgis_to_geometry_type_key(
-                self.feature_class.objects.filter().extra(
-                    select=dict(geometry_type='ST_GeometryType(wkb_geometry)')
-                )[0].geometry_type)
+            self.feature_class.objects.filter()
+            .extra(select=dict(geometry_type="ST_GeometryType(wkb_geometry)"))[0]
+            .geometry_type
+        )
 
     @property
     def config_entity(self):
@@ -417,6 +542,7 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         return self.db_entity_owner
 
     _config_entity = None
+
     @config_entity.setter
     def config_entity(self, value):
         """
@@ -437,7 +563,10 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
             config_entity = db_entity_interest.config_entity.subclassed
             if config_entity.owns_db_entity(self):
                 return db_entity_interest
-        raise Exception("No DbEntityInterest found of the owning ConfigEntity for DbEntity %s" % self.key)
+        raise Exception(
+            "No DbEntityInterest found of the owning ConfigEntity for DbEntity %s"
+            % self.key
+        )
 
     @property
     def db_entity_owner(self):
@@ -450,10 +579,17 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
             config_entity = db_entity_interest.config_entity.subclassed
             if config_entity.owns_db_entity(self):
                 return config_entity
-        raise Exception("Can't find owner of DbEntity %s with schema %s among %s" % (
-            self,
-            self.schema,
-            map(lambda db_entity_interest: db_entity_interest.config_entity, self.dbentityinterest_set.all())))
+        raise Exception(
+            "Can't find owner of DbEntity %s with schema %s among %s"
+            % (
+                self,
+                self.schema,
+                map(
+                    lambda db_entity_interest: db_entity_interest.config_entity,
+                    self.dbentityinterest_set.all(),
+                ),
+            )
+        )
 
     # TODO replace format with SC token format
     # Pickle the Django QuerySet configuration. The manager used is always the manager of the ad hoc class that represents
@@ -476,11 +612,9 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
     # so that it can be overridden by alternative an group_by or values
     query = PickledObjectField(null=True)
 
-
     @property
     def is_clone(self):
         return self.source_db_entity_key and self.source_db_entity_key != self.key
-
 
     # The same format, but only one dict is expected instead of an array
     # If the group_by dict is present, it will be preprended to the query dicts to form the QuerySet definition
@@ -500,7 +634,11 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         return self.parse_query(config_entity, full_query)
 
     def _add_to_query(self, **kwargs):
-        return kwargs.get('values', []) + kwargs.get('group_by', self.group_by or []) + self.query
+        return (
+            kwargs.get("values", [])
+            + kwargs.get("group_by", self.group_by or [])
+            + self.query
+        )
 
     # TODO this is all used only for results and will be replaced by the Sproutcore style stuff in query_parsing
     def parse_query(self, config_entity, query=None):
@@ -511,29 +649,47 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         """
         query = query or self.query
         if not query:
-            logger.error("Trying to run query for db_entity %s, which has no query defined or passed in" % self.full_name)
+            logger.error(
+                "Trying to run query for db_entity %s, which has no query defined or passed in"
+                % self.full_name
+            )
             return {}
 
         # Use the base table of the Feature class for now. We'll need to use the rel table soon.
-        manager = config_entity.db_entity_feature_class(self.key, base_feature_class=True).objects
+        manager = config_entity.db_entity_feature_class(
+            self.key, base_feature_class=True
+        ).objects
         if isinstance(query, basestring):
             # String query
             # Join the query with the base tables of the feature classes that match the db_entity_keys listed
             # as named wildcards in the query string They are in the form %(db_entity_key)
-            db_entity_keys = re.findall(r'%\((.+?)\)', query)
+            db_entity_keys = re.findall(r"%\((.+?)\)", query)
             formatted_query = query % map_to_dict(
-                lambda db_entity_key: [db_entity_key,
-                                       config_entity.db_entity_feature_class(db_entity_key, base_feature_class=True)._meta.db_table],
-                db_entity_keys)
+                lambda db_entity_key: [
+                    db_entity_key,
+                    config_entity.db_entity_feature_class(
+                        db_entity_key, base_feature_class=True
+                    )._meta.db_table,
+                ],
+                db_entity_keys,
+            )
             cursor = connection.cursor()
             cursor.execute(formatted_query)
 
             result_value = dictfetchall(cursor)
-            #always return results as a list so that multiple rows can be returned
+            # always return results as a list so that multiple rows can be returned
             return result_value
         else:
             # Combine the query parts
-            return [accumulate(lambda manager, queryset_command: self.parse_and_exec_queryset_command(manager, queryset_command), manager, query)]
+            return [
+                accumulate(
+                    lambda manager, queryset_command: self.parse_and_exec_queryset_command(
+                        manager, queryset_command
+                    ),
+                    manager,
+                    query,
+                )
+            ]
 
     def parse_and_exec_queryset_command(self, manager, queryset_command):
         """
@@ -543,10 +699,16 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         :return:
         """
         if len(queryset_command) != 2:
-            raise Exception("Expected queryset_command to be a two item tuple, but got %s".format(queryset_command))
+            raise Exception(
+                "Expected queryset_command to be a two item tuple, but got %s".format(
+                    queryset_command
+                )
+            )
         command, arguments = queryset_command
         # Fetch the command from the manager by name and call it with the parsed arguments
-        return getattr(manager, command)(*self.parse_queryset_command_arguments(arguments))
+        return getattr(manager, command)(
+            *self.parse_queryset_command_arguments(arguments)
+        )
 
     def parse_queryset_command_arguments(self, queryset_command_arguments):
         """
@@ -557,7 +719,8 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         """
         return map(
             lambda argument: self.parse_queryset_inner_argument(argument),
-            queryset_command_arguments)
+            queryset_command_arguments,
+        )
 
     def parse_queryset_inner_argument(self, argument):
         """
@@ -567,7 +730,9 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         :return:
         """
         if isinstance(argument, dict):
-            return map_dict(lambda key, value: self.resolve_models_class(key)(value), argument)[0]
+            return map_dict(
+                lambda key, value: self.resolve_models_class(key)(value), argument
+            )[0]
         return argument
 
     def resolve_models_class(self, class_name):
@@ -577,7 +742,7 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
         :param class_name: unpackaged class name like 'Avg' stored in the query definition
         :return: The class
         """
-        return getattr(sys.modules['django.db.models'], class_name)
+        return getattr(sys.modules["django.db.models"], class_name)
 
     @property
     def has_db_url(self):
@@ -585,7 +750,7 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
             Indicates whether or not the DbEntity url is configured to point to a postgres database
         :return:
         """
-        return self.url and self.url.startswith('postgres://')
+        return self.url and self.url.startswith("postgres://")
 
     @property
     def has_file_url(self):
@@ -593,35 +758,43 @@ class DbEntity(SharedKey, Name, Categories, Tags, Timestamps, Deletable, Cloneab
             Indicates whether or not the DbEntity url is configured to point to a file location
         :return:
         """
-        return self.url and self.url.startswith('file://')
+        return self.url and self.url.startswith("file://")
 
     @property
     def has_temp_file_url(self):
         """
-            Searches the url for settings.TEMP_DIR to indicate that the source was an uploaded file or similar temporary thing
+        Searches the url for settings.TEMP_DIR to indicate that the source was an uploaded file or similar temporary thing
         """
         return self.has_file_url and self.url.find(settings.TEMP_DIR) != -1
 
     @property
     def importable(self):
         """
-            Indicates if the DbEntity has the right characteristics for importing feature data.
+        Indicates if the DbEntity has the right characteristics for importing feature data.
         """
-        return self.has_db_url or self.has_file_url or (self.origin_instance and self.origin_instance.importable)
+        return (
+            self.has_db_url
+            or self.has_file_url
+            or (self.origin_instance and self.origin_instance.importable)
+        )
 
     @property
     def reimportable(self):
         """
-            Used to dissallow reimporting from file. Reimport should only happen from an administrative command,
-            and we can't reimport uploaded files
+        Used to dissallow reimporting from file. Reimport should only happen from an administrative command,
+        and we can't reimport uploaded files
         """
         return self.importable and not self.has_temp_file_url
 
     @property
     def is_valid(self):
-        return self.no_feature_class_configuration or (self.feature_class_configuration and self.feature_class_configuration.is_valid)
+        return self.no_feature_class_configuration or (
+            self.feature_class_configuration
+            and self.feature_class_configuration.is_valid
+        )
 
     _result_map_cache = {}
+
     @classmethod
     def _cached_result_map(cls, instance):
         """

@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -16,7 +15,7 @@ These views are only used for debugging low-level data in the database.
 """
 import json
 
-from decorator import decorator
+from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -26,32 +25,38 @@ from footprint.main.admin.utils import build_config_entity_trees
 from django.shortcuts import render
 
 
-@decorator
-def admin_required(f, request, *args, **kwds):
-    """Simple decorator to guarantee the user is logged in as staff/admin."""
-    if request.user.is_authenticated() and request.user.is_staff:
-        return f(request, *args, **kwds)
-    messages.error(request, '')
-    return HttpResponseNotAllowed(['GET'])
+def admin_required(f):
+    @wraps(f)
+    def chck(request, *args, **kwds):
+        """Simple decorator to guarantee the user is logged in as staff/admin."""
+        if request.user.is_authenticated() and request.user.is_staff:
+            return f(request, *args, **kwds)
+        messages.error(request, "")
+        return HttpResponseNotAllowed(["GET"])
+
+    return chck
 
 
-@login_required(login_url='/footprint/login')
+@login_required(login_url="/footprint/login")
 @admin_required
 def config_entities(request):
     """The admin view of the ConfigEntity hierarchy."""
-    config_entities = list(ConfigEntity.objects.order_by('id'))
+    config_entities = list(ConfigEntity.objects.order_by("id"))
     trees = build_config_entity_trees(config_entities)
 
-    return render(request, 'footprint/admin/config_entities.html',
-                  {
-                      'config_entities': config_entities,
-                      'trees_json': json.dumps(trees),
+    return render(
+        request,
+        "footprint/admin/config_entities.html",
+        {
+            "config_entities": config_entities,
+            "trees_json": json.dumps(trees),
+            "trees": trees,
+        },
+    )
 
-                      'trees': trees,
-                  })
 
-@login_required(login_url='/footprint/login')
+@login_required(login_url="/footprint/login")
 @admin_required
 def ufadmin(request):
     """The main administration interface."""
-    return render(request, 'footprint/admin/index.html')
+    return render(request, "footprint/admin/index.html")

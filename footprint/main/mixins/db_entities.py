@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -16,11 +15,13 @@ from footprint.main.lib.functions import first, map_dict_to_dict
 from footprint.main.utils.utils import resolve_module_attr
 
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class DbEntities(models.Model):
 
-    db_entities = models.ManyToManyField('DbEntity', through='DbEntityInterest')
+    db_entities = models.ManyToManyField("DbEntity", through="DbEntityInterest")
+
     class Meta:
         abstract = True
 
@@ -34,10 +35,10 @@ class DbEntities(models.Model):
         # This check exists to avoid infinite recursion, since db_entities are sometimes added post_config_entity_save handler
         if len(db_entity_interests) > 0:
             # Even though the field name is db_entities, we need to pass the DbEntityInterests
-            self._add('db_entities', *db_entity_interests)
+            self._add("db_entities", *db_entity_interests)
 
     def remove_db_entity_interests(self, *db_entity_interests):
-        self._remove('db_entities', *db_entity_interests)
+        self._remove("db_entities", *db_entity_interests)
 
     def feature_class_of_base_class(self, base_feature_class):
         """
@@ -47,20 +48,28 @@ class DbEntities(models.Model):
         """
         db_entities = filter(
             lambda db_entity:
-                # Get the configured abstract class
-                # The source_db_entity_key is a hack to prevent Result db_entities from being chosen
-                issubclass(
-                    resolve_module_attr(db_entity.feature_class_configuration.abstract_class_name, object),
-                    base_feature_class) and
-                not db_entity.source_db_entity_key,
-            self.computed_db_entities())
+            # Get the configured abstract class
+            # The source_db_entity_key is a hack to prevent Result db_entities from being chosen
+            issubclass(
+                resolve_module_attr(
+                    db_entity.feature_class_configuration.abstract_class_name, object
+                ),
+                base_feature_class,
+            )
+            and not db_entity.source_db_entity_key,
+            self.computed_db_entities(),
+        )
         if len(db_entities) != 1:
             raise Exception(
                 "Expected exactly one db_entity matching the base_class {0} but got {1}".format(
-                    base_feature_class, db_entities if len(db_entities) > 0 else 'none'))
+                    base_feature_class, db_entities if len(db_entities) > 0 else "none"
+                )
+            )
         return self.db_entity_feature_class(db_entities[0].key)
 
-    def db_entity_feature_class(self, key, abstract_class=False, base_feature_class=False):
+    def db_entity_feature_class(
+        self, key, abstract_class=False, base_feature_class=False
+    ):
         """
             Resolves the Feature class subclass of this config_entity for the given key, or the base class version
             if base_class-True. Note that this is slightly different than asking a DbEntity for its corresponding
@@ -77,26 +86,59 @@ class DbEntities(models.Model):
         """
         try:
             original_db_entity = self.computed_db_entities().get(key=key)
-        except Exception, e:
-            raise Exception("The DbEntity key %s could not be found in the computed DbEntities of the ConfigEntity %s, which contains %s" %
-                            (key, self.name, ', '.join(map(lambda db_entity: db_entity.key, self.computed_db_entities()))))
+        except Exception as e:
+            raise Exception(
+                "The DbEntity key %s could not be found in the computed DbEntities of the ConfigEntity %s, which contains %s"
+                % (
+                    key,
+                    self.name,
+                    ", ".join(
+                        map(
+                            lambda db_entity: db_entity.key, self.computed_db_entities()
+                        )
+                    ),
+                )
+            )
 
-        source_db_entity_key = original_db_entity.source_db_entity_key if original_db_entity.source_db_entity_key else key
+        source_db_entity_key = (
+            original_db_entity.source_db_entity_key
+            if original_db_entity.source_db_entity_key
+            else key
+        )
         db_entity = self.computed_db_entities().get(key=source_db_entity_key)
         # Resolve the source_db_entity_key of the DbEntity or just use key
-        from footprint.main.models.feature.feature_class_creator import FeatureClassCreator
+        from footprint.main.models.feature.feature_class_creator import (
+            FeatureClassCreator,
+        )
+
         if abstract_class:
-            subclass = resolve_module_attr(db_entity.feature_class_configuration.abstract_class_name)
-        elif base_feature_class or db_entity.feature_class_configuration.no_table_associations:
-            subclass = FeatureClassCreator(self, db_entity).dynamic_model_class(base_only=True)
+            subclass = resolve_module_attr(
+                db_entity.feature_class_configuration.abstract_class_name
+            )
+        elif (
+            base_feature_class
+            or db_entity.feature_class_configuration.no_table_associations
+        ):
+            subclass = FeatureClassCreator(self, db_entity).dynamic_model_class(
+                base_only=True
+            )
         else:
             subclass = FeatureClassCreator(self, db_entity).dynamic_model_class()
         if not subclass:
             raise Exception(
                 "For config_entity {0} no class associated with db_entity_key {1}{2}. "
-                "Register a table in default_db_entities() of the owning config_entity.".
-                format(unicode(self), key, ", even after resolving source_db_entity_key to {0}".format(source_db_entity_key)
-                if source_db_entity_key != key else ''))
+                "Register a table in default_db_entities() of the owning config_entity.".format(
+                    unicode(self),
+                    key,
+                    (
+                        ", even after resolving source_db_entity_key to {0}".format(
+                            source_db_entity_key
+                        )
+                        if source_db_entity_key != key
+                        else ""
+                    ),
+                )
+            )
         return subclass
 
     def clone_db_entities(self):
@@ -106,12 +148,16 @@ class DbEntities(models.Model):
         :return:
         """
         if not self.origin_instance:
-            raise Exception("Cannot clone a config_entity's db_entities which lacks an origin_instance")
-        origin_db_entity_interests = self.origin_instance_subclassed.computed_db_entity_interests
+            raise Exception(
+                "Cannot clone a config_entity's db_entities which lacks an origin_instance"
+            )
+        origin_db_entity_interests = (
+            self.origin_instance_subclassed.computed_db_entity_interests
+        )
 
         # Sync the db_entities, instructing the method to clone from the origin
         # TODO figure this out
-        #sync_db_entities()
+        # sync_db_entities()
 
     def has_feature_class(self, db_entity_key):
         try:
@@ -128,38 +174,44 @@ class DbEntities(models.Model):
         """
         return self.db_entity_feature_class(key, abstract_class=True)
 
-
     def db_entity_owner(self, db_entity):
         """
             Returns the ConfigEntity that owns the db_entity, either self or one of its ancestors
         :param db_entity:
         :return:
         """
-        return self if self.owns_db_entity(db_entity) else self.parent_config_entity_subclassed.db_entity_owner(
-            db_entity)
+        return (
+            self
+            if self.owns_db_entity(db_entity)
+            else self.parent_config_entity_subclassed.db_entity_owner(db_entity)
+        )
 
     def owns_db_entity(self, db_entity):
         return self.schema() == db_entity.schema
 
     def owned_db_entities(self, **query_kwargs):
         """
-            Returns non-adopted DbEntity instances
+        Returns non-adopted DbEntity instances
         """
         return map(
             lambda db_entity_interest: db_entity_interest.db_entity,
             self.owned_db_entity_interests(
                 # add a db_entity__ prefix since the kwargs are desiged for a DbEntity, not the DbEntityInterest
-                **map_dict_to_dict(lambda key, value: ['db_entity__%s' % key, value], query_kwargs)
-            )
+                **map_dict_to_dict(
+                    lambda key, value: ["db_entity__%s" % key, value], query_kwargs
+                )
+            ),
         )
 
     def owned_db_entity_interests(self, **query_kwargs):
         """
-            Returns non-adopted DbEntityInterest instances
+        Returns non-adopted DbEntityInterest instances
         """
         return filter(
-            lambda db_entity_interest: db_entity_interest.db_entity.schema == self.schema(),
-            self.computed_db_entity_interests(**query_kwargs))
+            lambda db_entity_interest: db_entity_interest.db_entity.schema
+            == self.schema(),
+            self.computed_db_entity_interests(**query_kwargs),
+        )
 
     def db_entity_by_key(self, key):
         """
@@ -177,21 +229,30 @@ class DbEntities(models.Model):
         :param schema: the optional name of the DbEntity's schema.
         :return: a DbEntity instance matching the table and schema belonging to the instance or the first ancestor that has it
         """
-        self._get('db_entities', table=table, schema=schema)
+        self._get("db_entities", table=table, schema=schema)
 
     def db_entities_having_behavior(self, behavior, **kwargs):
         """
-            Finds all computed DbEntities matching kwargs that have the given Behavior instance
-            :param behavior: A Behavior instance
+        Finds all computed DbEntities matching kwargs that have the given Behavior instance
+        :param behavior: A Behavior instance
         """
-        return filter(lambda db_entity: db_entity.has_behavior(behavior), self.computed_db_entities(**kwargs))
+        return filter(
+            lambda db_entity: db_entity.has_behavior(behavior),
+            self.computed_db_entities(**kwargs),
+        )
 
     def db_entities_having_behavior_key(self, behavior_key, **kwargs):
         """
-            Finds all computed DbEntities matching kwargs that have the Behavior of the given key
-            :param behavior_key: The key of a Behavior instance
+        Finds all computed DbEntities matching kwargs that have the Behavior of the given key
+        :param behavior_key: The key of a Behavior instance
         """
-        return filter(lambda db_entity: db_entity.is_valid and db_entity.has_behavior_key(behavior_key), self.computed_db_entities(**kwargs).filter(source_db_entity_key__isnull=True))
+        return filter(
+            lambda db_entity: db_entity.is_valid
+            and db_entity.has_behavior_key(behavior_key),
+            self.computed_db_entities(**kwargs).filter(
+                source_db_entity_key__isnull=True
+            ),
+        )
 
     @property
     def primary_geography_db_entity(self):
@@ -200,11 +261,17 @@ class DbEntities(models.Model):
         :return:
         """
         primary_geography_db_entity = first(
-            lambda db_entity: db_entity.feature_class_configuration and db_entity.feature_class_configuration.primary_geography,
-            self.owned_db_entities())
+            lambda db_entity: db_entity.feature_class_configuration
+            and db_entity.feature_class_configuration.primary_geography,
+            self.owned_db_entities(),
+        )
         if primary_geography_db_entity:
             return primary_geography_db_entity
-        return self.parent_config_entity_subclassed.primary_geography_db_entity if self.parent_config_entity else None
+        return (
+            self.parent_config_entity_subclassed.primary_geography_db_entity
+            if self.parent_config_entity
+            else None
+        )
 
     @property
     def primary_geography_config_entity(self):
@@ -213,8 +280,14 @@ class DbEntities(models.Model):
         :return:
         """
         primary_geography_db_entity = first(
-            lambda db_entity: db_entity.feature_class_configuration and db_entity.feature_class_configuration.primary_geography,
-            self.owned_db_entities())
+            lambda db_entity: db_entity.feature_class_configuration
+            and db_entity.feature_class_configuration.primary_geography,
+            self.owned_db_entities(),
+        )
         if primary_geography_db_entity:
             return self
-        return self.parent_config_entity_subclassed.primary_geography_config_entity if self.parent_config_entity else None
+        return (
+            self.parent_config_entity_subclassed.primary_geography_config_entity
+            if self.parent_config_entity
+            else None
+        )

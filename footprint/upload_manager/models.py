@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -24,20 +23,21 @@ logger = logging.getLogger(__name__)
 
 class UploadTaskMixin(models.Model):
     """
-        Fields common to UploadTask and UploadDatasetTask
+    Fields common to UploadTask and UploadDatasetTask
     """
+
     class Meta:
         abstract = True
 
-    PENDING = 'PENDING'
-    SUCCESS = 'SUCCESS'
-    FAILURE = 'FAILURE'
-    PARTIAL = 'PARTIAL'
+    PENDING = "PENDING"
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    PARTIAL = "PARTIAL"
     STATUSES = (
-        (PENDING, 'Pending'),
-        (SUCCESS, 'Success'),
-        (FAILURE, 'Failure'),
-        (PARTIAL, 'Partial'),
+        (PENDING, "Pending"),
+        (SUCCESS, "Success"),
+        (FAILURE, "Failure"),
+        (PARTIAL, "Partial"),
     )
 
     status = models.TextField(default=PENDING, choices=STATUSES)
@@ -47,7 +47,7 @@ class UploadTaskMixin(models.Model):
     progress = models.FloatField(default=0)
 
     def __unicode__(self):
-        return u'Upload task %s (%s)' % (self.id, self.status)
+        return "Upload task %s (%s)" % (self.id, self.status)
 
     def load_extra(self):
         """
@@ -66,12 +66,13 @@ class UploadTaskMixin(models.Model):
         Send progress information to frontend via websockets
         """
         self.load_extra()
-        if 'X-Progress-ID' not in self.extra:
-            raise Exception('UploadTask must have a X-Progress-ID in'
-                            ' order to send messages through websockets')
+        if "X-Progress-ID" not in self.extra:
+            raise Exception(
+                "UploadTask must have a X-Progress-ID in"
+                " order to send messages through websockets"
+            )
         if self.progress is None:
-            raise Exception('UploadTask cannot send_progress if progress'
-                            ' is None')
+            raise Exception("UploadTask cannot send_progress if progress" " is None")
 
         kwargs = self.send_progress_kwargs()
         logger.debug("UploadHandler: Sending progress: %s" % kwargs)
@@ -88,24 +89,28 @@ class UploadTaskMixin(models.Model):
 
 class UploadTask(UploadTaskMixin):
     """
-        Manages a zipped uploaded file or an argis file being downloaded.
-        In the case of uploaded files there are one or more UploadDatasetTasks created
-        to handle the one or more datasets within the zip file.
-        For ArcGIS downloads just one UploadDatasetTask is created TODO--not tested
+    Manages a zipped uploaded file or an argis file being downloaded.
+    In the case of uploaded files there are one or more UploadDatasetTasks created
+    to handle the one or more datasets within the zip file.
+    For ArcGIS downloads just one UploadDatasetTask is created TODO--not tested
     """
 
-    UPLOAD_DATAFILE = 'UPLOAD_DATAFILE'
-    DOWNLOAD_ARCGIS_LAYER = 'DOWNLOAD_ARCGIS_LAYER'
+    UPLOAD_DATAFILE = "UPLOAD_DATAFILE"
+    DOWNLOAD_ARCGIS_LAYER = "DOWNLOAD_ARCGIS_LAYER"
     TYPES = (
-        (UPLOAD_DATAFILE, 'Upload a datafile'),
-        (DOWNLOAD_ARCGIS_LAYER, 'Download an ArcGis Layer'),
+        (UPLOAD_DATAFILE, "Upload a datafile"),
+        (DOWNLOAD_ARCGIS_LAYER, "Download an ArcGis Layer"),
     )
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='upload_tasks')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="upload_tasks", on_delete=models.PROTECT
+    )
 
     # The target config entity for this job. Recorded at upload time,
     # and then referenced when the export is complete.
-    config_entity = models.ForeignKey(ConfigEntity, null=True)
+    config_entity = models.ForeignKey(
+        ConfigEntity, null=True, on_delete=models.SET_NULL
+    )
 
     # Designates whether this is an file upload of arcgis download
     type = models.CharField(max_length=32, choices=TYPES)
@@ -124,7 +129,7 @@ class UploadTask(UploadTaskMixin):
         :param kwargs:
         :return:
         """
-        if self.extra is not None and not isinstance(self.extra, basestring):
+        if self.extra is not None and not isinstance(self.extra, str):
             self.extra = json.dumps(self.extra)
 
         return super(UploadTask, self).save(*args, **kwargs)
@@ -139,7 +144,8 @@ class UploadTask(UploadTaskMixin):
             id=self.id,
             file_name=self.name,
             progress=self.progress,
-            config_entity_id=self.config_entity.id if self.config_entity else None)
+            config_entity_id=self.config_entity.id if self.config_entity else None,
+        )
 
     def send_error_kwargs(self):
         """
@@ -151,16 +157,17 @@ class UploadTask(UploadTaskMixin):
             id=self.id,
             file_name=self.name,
             progress=self.progress,
-            config_entity_id=self.config_entity.id if self.config_entity else None)
+            config_entity_id=self.config_entity.id if self.config_entity else None,
+        )
 
 
 class UploadDatasetTask(UploadTaskMixin):
     """
-        Represents an individual dataset within the uploaded file
+    Represents an individual dataset within the uploaded file
     """
 
     # The main UploadTask representing the file.
-    upload_task = models.ForeignKey(UploadTask)
+    upload_task = models.ForeignKey(UploadTask, on_delete=models.CASCADE)
 
     # The dataset's id
     dataset_id = models.IntegerField()
@@ -176,7 +183,7 @@ class UploadDatasetTask(UploadTaskMixin):
     _metadata = models.TextField(db_column="metadata", blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        if self.extra is not None and not isinstance(self.extra, basestring):
+        if self.extra is not None and not isinstance(self.extra, str):
             self.extra = json.dumps(self.extra)
 
         return super(UploadDatasetTask, self).save(*args, **kwargs)

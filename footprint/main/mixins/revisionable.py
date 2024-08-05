@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -13,12 +12,13 @@
 import reversion
 from footprint.main.models.geospatial.feature_version import feature_revision_manager
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class Revisionable(object):
     """
-        Currently used to allow a model instance to represent a previous revision of the instance
-        in-memory.
+    Currently used to allow a model instance to represent a previous revision of the instance
+    in-memory.
     """
 
     # set this to the revision instance so that the revision properties resolve to the correct

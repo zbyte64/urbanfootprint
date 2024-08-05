@@ -15,13 +15,14 @@ from footprint.main.managers.geo_inheritance_manager import GeoInheritanceManage
 from footprint.main.models.config.global_config import GlobalConfig
 from footprint.main.models.config.config_entity import ConfigEntity
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 class Region(ConfigEntity):
     """
-        The Region may have a parent Region.
+    The Region may have a parent Region.
     """
+
     objects = GeoInheritanceManager()
 
     @classmethod
@@ -30,9 +31,4 @@ class Region(ConfigEntity):
         return [GlobalConfig]
 
     class Meta(object):
-        permissions = (
-            ('view_region', 'View Region'),
-            # this would permit the merging of region scoped db_entities from one region to another
-            ('merge_region', 'Merge Region'),
-        )
-        app_label = 'main'
+        app_label = "main"

@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -13,36 +12,48 @@
 import logging
 
 from django.contrib.gis.db import models
-from footprint.main.lib.functions import map_dict_to_dict, get_single_value_or_none, map_to_dict
+from footprint.main.lib.functions import (
+    map_dict_to_dict,
+    get_single_value_or_none,
+    map_to_dict,
+)
 from footprint.main.models.config.config_entity import ConfigEntity
 from footprint.main.utils.utils import resolve_module_attr
 
 logger = logging.getLogger(__name__)
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class DynamicModelClassCreator(object):
     """
-        Base class for creating dynamic model classes scoped to a ConfigEntity or something more specific.
+    Base class for creating dynamic model classes scoped to a ConfigEntity or something more specific.
     """
 
     config_entity = None
     configuration = None
     no_ensure = None
 
-    def __init__(self, config_entity=None, configuration_or_container=None, no_ensure=False):
+    def __init__(
+        self, config_entity=None, configuration_or_container=None, no_ensure=False
+    ):
         """
-            Initialize to the config_entity. This can be None if non-ConfigEntity specific config_entity
-            classes are desired. The only thing that can be returned without a config_entity is the abstract
-            model classes that are preconfigured.
-            :param config_entity: The ConfigEntity
-            :param configuration_or_container: The configuration describing the dynamic subclass,
-            e.g. a FeatureClassConfiguration or AnalysisModuleConfiguration. A container to the configuration can
-            be used instead in conjunction with the resolve_configuration function
-            This is None to use methods that are only specific to the config_entity
+        Initialize to the config_entity. This can be None if non-ConfigEntity specific config_entity
+        classes are desired. The only thing that can be returned without a config_entity is the abstract
+        model classes that are preconfigured.
+        :param config_entity: The ConfigEntity
+        :param configuration_or_container: The configuration describing the dynamic subclass,
+        e.g. a FeatureClassConfiguration or AnalysisModuleConfiguration. A container to the configuration can
+        be used instead in conjunction with the resolve_configuration function
+        This is None to use methods that are only specific to the config_entity
         """
         from footprint.main.models.config.scenario import Scenario
-        self.config_entity = config_entity.subclassed if config_entity and config_entity.__class__ in [ConfigEntity, Scenario] else config_entity
+
+        self.config_entity = (
+            config_entity.subclassed
+            if config_entity and config_entity.__class__ in [ConfigEntity, Scenario]
+            else config_entity
+        )
         self.configuration = configuration_or_container
         self.no_ensure = no_ensure
         if self.config_entity and not self.no_ensure:
@@ -60,8 +71,8 @@ class DynamicModelClassCreator(object):
     @classmethod
     def resolve_configuration(cls, configuration_or_container):
         """
-            If the instance that is passed in does not match the configuration that produces the dynamic class,
-            map it here. For instance FeatureClassCreator converts a db_entity to db_entity.feature_class_configuration
+        If the instance that is passed in does not match the configuration that produces the dynamic class,
+        map it here. For instance FeatureClassCreator converts a db_entity to db_entity.feature_class_configuration
         """
         return configuration_or_container
 
@@ -83,7 +94,9 @@ class DynamicModelClassCreator(object):
         :return: A dict keyed by db_entity key and valued by a dynamic model subclass or None
         """
 
-        configurations = configurations_or_containers or self.dynamic_model_configurations()
+        configurations = (
+            configurations_or_containers or self.dynamic_model_configurations()
+        )
         if not self.config_entity:
             return self.__class__.key_to_abstract_model_class_lookup(configurations)
 
@@ -91,12 +104,23 @@ class DynamicModelClassCreator(object):
         # Get the corresponding db_entities from the config_entity
         existing_configurations = map(
             lambda configuration: self.dynamic_model_configuration(configuration.key),
-            map(lambda configuration: self.__class__.resolve_configuration(configuration), configurations))
+            map(
+                lambda configuration: self.__class__.resolve_configuration(
+                    configuration
+                ),
+                configurations,
+            ),
+        )
 
-        return map_to_dict(lambda existing_configuration:
-                                [existing_configuration.key,
-                                 self.__class__(self.config_entity, existing_configuration, self.no_ensure).dynamic_model_class()],
-                           existing_configurations)
+        return map_to_dict(
+            lambda existing_configuration: [
+                existing_configuration.key,
+                self.__class__(
+                    self.config_entity, existing_configuration, self.no_ensure
+                ).dynamic_model_class(),
+            ],
+            existing_configurations,
+        )
 
     @classmethod
     def key_to_abstract_model_class_lookup(cls, configuration_or_containers):
@@ -106,15 +130,22 @@ class DynamicModelClassCreator(object):
         :param configuration_or_containers:
         :return:
         """
-        return map_to_dict(lambda configuration: [configuration.key,
-                                                  resolve_module_attr(configuration.abstract_class_name)],
-                           map(lambda configuration: cls.resolve_configuration(configuration), configuration_or_containers))
+        return map_to_dict(
+            lambda configuration: [
+                configuration.key,
+                resolve_module_attr(configuration.abstract_class_name),
+            ],
+            map(
+                lambda configuration: cls.resolve_configuration(configuration),
+                configuration_or_containers,
+            ),
+        )
 
     def ensure_dynamic_models(self):
         """
-            For a given run of the application, make sure that all the dynamic model classes of the config_entity have been created.
-            We only want to create preconfigured model classes once per application run, and once they are created below we shouldn't have to check
-            to see if they exist.
+        For a given run of the application, make sure that all the dynamic model classes of the config_entity have been created.
+        We only want to create preconfigured model classes once per application run, and once they are created below we shouldn't have to check
+        to see if they exist.
         """
         raise NotImplementedError("Define in subclass")
         return self.config_entity._dynamic_models_created
@@ -122,13 +153,18 @@ class DynamicModelClassCreator(object):
     @property
     def dynamic_model_class_is_ready(self):
         """
-            Indicates if there is enough configuration information to create the dynamic subclass. Defaults to True
+        Indicates if there is enough configuration information to create the dynamic subclass. Defaults to True
         """
         # This is a bit of a hack, but it's assumed the feature_class_configuration is ready when it has
         # an abstract_class, since this is the way that imported feature classes work.
-        return self.configuration and\
-               self.configuration.abstract_class_name and\
-               (self.configuration.class_attrs and len(self.configuration.class_attrs) > 0)
+        return (
+            self.configuration
+            and self.configuration.abstract_class_name
+            and (
+                self.configuration.class_attrs
+                and len(self.configuration.class_attrs) > 0
+            )
+        )
 
     def dynamic_model_class(self):
         raise NotImplementedError("Subclass must implement this method")
@@ -136,7 +172,9 @@ class DynamicModelClassCreator(object):
     def generate_configuration(self, fields=[]):
         raise NotImplementedError("Subclass must implement this method")
 
-    def clone_feature_class_configuration_for_config_entity(self, feature_class_configuration):
+    def clone_feature_class_configuration_for_config_entity(
+        self, feature_class_configuration
+    ):
         raise NotImplementedError("Subclass must implement this method")
 
     def create_related_fields(self):
@@ -146,9 +184,10 @@ class DynamicModelClassCreator(object):
         """
         return map_dict_to_dict(
             lambda field_name, related_field_configuration: self.create_related_field(
-                field_name,
-                related_field_configuration),
-            self.configuration.related_fields or {})
+                field_name, related_field_configuration
+            ),
+            self.configuration.related_fields or {},
+        )
 
     def related_descriptors(self):
         """
@@ -158,8 +197,12 @@ class DynamicModelClassCreator(object):
         """
         dynamic_model_class = self.dynamic_model_class()
         return map_dict_to_dict(
-            lambda field_name, related_field_configuration: [field_name, getattr(dynamic_model_class, field_name)],
-            self.configuration.related_fields or {})
+            lambda field_name, related_field_configuration: [
+                field_name,
+                getattr(dynamic_model_class, field_name),
+            ],
+            self.configuration.related_fields or {},
+        )
 
     def create_related_field(self, field_name, related_field_configuration):
         """
@@ -177,29 +220,55 @@ class DynamicModelClassCreator(object):
         config_entity = ConfigEntity._subclassed_by_id(self.configuration.scope)
 
         # TODO temp coverage of a key name name change
-        related_field_configuration['related_key'] = related_field_configuration.get('related_key', related_field_configuration.get('related_db_entity_key'))
+        related_field_configuration["related_key"] = related_field_configuration.get(
+            "related_key", related_field_configuration.get("related_db_entity_key")
+        )
 
-        if related_field_configuration.get('related_key', False):
+        if related_field_configuration.get("related_key", False):
             # field name matches name of peer self.db_entity_key--get it's feature class name
-            related_db_entity = get_single_value_or_none(config_entity.computed_db_entities(key=related_field_configuration['related_key']))
+            related_db_entity = get_single_value_or_none(
+                config_entity.computed_db_entities(
+                    key=related_field_configuration["related_key"]
+                )
+            )
             # Always call with no_ensure=True since the config_entity is the same. Otherwise we'd get infinite recursion
-            related_class_name_or_model = self.__class__(self.config_entity, related_db_entity, no_ensure=True).dynamic_model_class()
-        elif related_field_configuration.get('related_class_name', None):
+            related_class_name_or_model = self.__class__(
+                self.config_entity, related_db_entity, no_ensure=True
+            ).dynamic_model_class()
+        elif related_field_configuration.get("related_class_name", None):
             # A model class such as BuiltForm
-            related_class_name_or_model = resolve_module_attr(related_field_configuration['related_class_name'])
+            related_class_name_or_model = resolve_module_attr(
+                related_field_configuration["related_class_name"]
+            )
         else:
-            raise Exception("No related_key or related_class_name found on feature_class_configuration for self.configuration.key %s" % self.configuration.key)
+            raise Exception(
+                "No related_key or related_class_name found on feature_class_configuration for self.configuration.key %s"
+                % self.configuration.key
+            )
 
-        logger.info('Creating %r related field for %s using %s', related_field_configuration.get('single', None) and 'single' or 'm2m',
-                    field_name, related_field_configuration)
-        if related_field_configuration.get('single', None):
-            return [field_name,
-                    models.ForeignKey(related_class_name_or_model, null=True)]
+        logger.info(
+            "Creating %r related field for %s using %s",
+            related_field_configuration.get("single", None) and "single" or "m2m",
+            field_name,
+            related_field_configuration,
+        )
+        if related_field_configuration.get("single", None):
+            return [
+                field_name,
+                models.ForeignKey(
+                    related_class_name_or_model, null=True, on_delete=models.PROTECT
+                ),
+            ]
         else:
-            return [field_name,
-                    models.ManyToManyField(related_class_name_or_model,
-                                           # Pass a custom, readable table name for the through class for ManyToMany relations
-                                           db_table='"{schema}"."{table}_{field_name}"'.format(
-                                               schema=config_entity.schema(),
-                                               table=self.configuration.key,
-                                               field_name=field_name))]
+            return [
+                field_name,
+                models.ManyToManyField(
+                    related_class_name_or_model,
+                    # Pass a custom, readable table name for the through class for ManyToMany relations
+                    db_table='"{schema}"."{table}_{field_name}"'.format(
+                        schema=config_entity.schema(),
+                        table=self.configuration.key,
+                        field_name=field_name,
+                    ),
+                ),
+            ]

@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -11,11 +10,11 @@
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
 # Explicit imports for module resolution, sigh
-import core_module
-import fiscal_module
-import vmt_module
-import public_health_module
-import water_module
-import energy_module
-import agriculture_module
-import environmental_constraint_module
+from . import core_module
+from . import fiscal_module
+from . import vmt_module
+from . import public_health_module
+from . import water_module
+from . import energy_module
+from . import agriculture_module
+from . import environmental_constraint_module

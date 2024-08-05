@@ -17,7 +17,9 @@ from random import randrange
 
 import datetime
 from django.core.management.base import BaseCommand
-from django.utils.timezone import utc
+import datetime
+
+utc = datetime.timezone.utc
 
 from footprint.main.models.analysis_module.agriculture_module.agriculture_updater_tool import AgricultureUpdaterTool
 from footprint.main.models.analysis_module.analysis_module import AnalysisModuleKey, AnalysisModule

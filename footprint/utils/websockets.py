@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -13,13 +12,18 @@
 from json import dumps
 from django.conf import settings
 
-import redis
+# import redis
+
 
 def send_message_to_client(userid, message_dictionary):
     """
     Sends a message to the web client through websockets
     """
-    r = redis.StrictRedis(host=settings.CELERY_REDIS_HOST, port=settings.CELERY_REDIS_PORT, db=settings.CELERY_REDIS_DB)
-    channel = 'channel_{0}'.format(userid)
+    r = redis.StrictRedis(
+        host=settings.CELERY_REDIS_HOST,
+        port=settings.CELERY_REDIS_PORT,
+        db=settings.CELERY_REDIS_DB,
+    )
+    channel = "channel_{0}".format(userid)
     json_message = dumps(message_dictionary)
     r.publish(channel, json_message)

@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -13,7 +12,7 @@
 from django.db import models
 from footprint.main.managers.geo_inheritance_manager import GeoInheritanceManager
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 class Category(models.Model):
@@ -22,5 +21,14 @@ class Category(models.Model):
     key = models.CharField(max_length=100, null=False)
     value = models.CharField(max_length=100, null=False)
 
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
+    def __unicode__(self):
+        return self.name
+
     class Meta:
-        app_label = 'main'
+        app_label = "main"

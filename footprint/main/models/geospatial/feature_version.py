@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -11,22 +10,28 @@
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
 from django.db import DEFAULT_DB_ALIAS
-from reversion.models import Version, Revision
-from reversion.revisions import RevisionManager
+from django.db.models import Manager
+from reversion.models import Version, Revision, VersionQuerySet
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
-class FeatureRevisionManager(RevisionManager):
+class FeatureRevisionManager(VersionQuerySet):
 
     def _get_versions(self, db=None):
         """Returns all versions that apply to this manager."""
         db = db or DEFAULT_DB_ALIAS
-        return FeatureVersionProxy.objects.using(db).filter(
-            revision__manager_slug = self._manager_slug,
-            ).select_related("revision")
+        return (
+            FeatureVersionProxy.objects.using(db)
+            .filter(
+                revision__manager_slug=self._manager_slug,
+            )
+            .select_related("revision")
+        )
 
-feature_revision_manager = FeatureRevisionManager("feature")
+
+feature_revision_manager = Manager  # .from_queryset(FeatureRevisionManager("feature"))
+
 
 class FeatureRevisionProxy(Revision):
 
@@ -37,14 +42,15 @@ class FeatureRevisionProxy(Revision):
         :return:
         """
         versions = super(FeatureRevisionProxy, self).version_set.all()
-        return FeatureVersionProxy.objects.filter(id__in=versions).order_by('id')
+        return FeatureVersionProxy.objects.filter(id__in=versions).order_by("id")
 
     class Meta(object):
         proxy = True
 
+
 class FeatureVersionProxy(Version):
     """
-        Customizes deserialization for Feature versions
+    Customizes deserialization for Feature versions
     """
 
     @property

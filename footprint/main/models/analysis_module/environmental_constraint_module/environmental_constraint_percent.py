@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -11,23 +10,24 @@
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
 
-
 from model_utils.managers import InheritanceManager
 from footprint.main.models.geospatial.db_entity import DbEntity
 from django.contrib.gis.db import models
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 class EnvironmentalConstraintPercent(models.Model):
 
-    db_entity = models.ForeignKey(DbEntity)
-    analysis_tool = models.ForeignKey('EnvironmentalConstraintUpdaterTool', null=False)
+    db_entity = models.ForeignKey(DbEntity, on_delete=models.PROTECT)
+    analysis_tool = models.ForeignKey(
+        "EnvironmentalConstraintUpdaterTool", null=False, on_delete=models.PROTECT
+    )
     percent = models.DecimalField(max_digits=14, decimal_places=8, default=1, null=True)
     priority = models.IntegerField(default=1, null=True)
 
     objects = InheritanceManager()
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"
         abstract = False

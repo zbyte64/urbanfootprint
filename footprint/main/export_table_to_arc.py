@@ -51,7 +51,7 @@ def executeSQL_now(conn_string, sqls, db=None, **kwargs):
                 results.append(n)
             resultset.append(results)
 
-        except Exception, E:
+        except Exception as E:
             resultset.append(E)
 
     return resultset

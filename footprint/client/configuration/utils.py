@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -14,7 +13,7 @@ import inspect
 import logging
 import sys
 
-from django.utils import importlib
+import importlib
 from django.conf import settings
 
 from footprint.main.lib.functions import merge, remove_keys
@@ -38,7 +37,9 @@ def resolve_client_module(module, module_fragment, schema=settings.CLIENT):
     return importlib.import_module("footprint.client.configuration.%s" % module_string)
 
 
-def resolve_default_fixture(module, module_fragment, fixture_class, schema=None, *args, **kwargs):
+def resolve_default_fixture(
+    module, module_fragment, fixture_class, schema=None, *args, **kwargs
+):
     """
         Return the default fixture_class version of the given module. The default_fixture is the fixture matching
         the module [module].default_[module_fragment]. This is the top of the food-chain. All client fixtures
@@ -49,41 +50,60 @@ def resolve_default_fixture(module, module_fragment, fixture_class, schema=None,
     :param fixture_class: The class to lookup in the module. Any subclass will match as well
     :return:
     """
-    default_module_string = '%s.%s_%s' % (module, 'default', module_fragment) if module else \
-        '%s_%s' % ('default', module_fragment)
+    default_module_string = (
+        "%s.%s_%s" % (module, "default", module_fragment)
+        if module
+        else "%s_%s" % ("default", module_fragment)
+    )
     client_module = importlib.import_module(
-         "footprint.client.configuration.default.%s" % default_module_string)
-    class_members = inspect.getmembers(sys.modules[client_module.__name__], inspect.isclass)
+        "footprint.client.configuration.default.%s" % default_module_string
+    )
+    class_members = inspect.getmembers(
+        sys.modules[client_module.__name__], inspect.isclass
+    )
     for name, cls in class_members:
         if issubclass(cls, fixture_class) and cls != fixture_class:
-            return cls(schema or 'global', *args, **kwargs)
+            return cls(schema or "global", *args, **kwargs)
 
-def resolve_parent_fixture(module, module_fragment, fixture_class, schema, *args, **kwargs):
+
+def resolve_parent_fixture(
+    module, module_fragment, fixture_class, schema, *args, **kwargs
+):
     # Resolve the parent schema. Client or region schemas become global. global has no schema
     # TODO use kwargs['config_entity'].parent_schema to resolve if we get to a point where
     # config_entity is required
-    parent_schema = '__'.join(schema.split('__')[0:-1]) or ('global' if schema != 'global' else None)
-    if parent_schema and (kwargs.get('schema_config_entity') or kwargs.get('config_entity')):
-        parent_config_entity = kwargs.get('schema_config_entity', kwargs['config_entity']).parent_config_entity_subclassed
-        new_kwargs = merge(
-            kwargs,
-            dict(
-                schema_config_entity=parent_config_entity
-            )
-        )
+    parent_schema = "__".join(schema.split("__")[0:-1]) or (
+        "global" if schema != "global" else None
+    )
+    if parent_schema and (
+        kwargs.get("schema_config_entity") or kwargs.get("config_entity")
+    ):
+        parent_config_entity = kwargs.get(
+            "schema_config_entity", kwargs["config_entity"]
+        ).parent_config_entity_subclassed
+        new_kwargs = merge(kwargs, dict(schema_config_entity=parent_config_entity))
     else:
         new_kwargs = kwargs
 
     if parent_schema:
-        fixture = resolve_fixture(module, module_fragment, fixture_class, parent_schema, *args, **new_kwargs)
+        fixture = resolve_fixture(
+            module, module_fragment, fixture_class, parent_schema, *args, **new_kwargs
+        )
     else:
-        fixture = resolve_default_fixture(module, module_fragment, fixture_class, parent_schema,  *args, **new_kwargs)
+        fixture = resolve_default_fixture(
+            module, module_fragment, fixture_class, parent_schema, *args, **new_kwargs
+        )
     if not fixture:
-        raise Exception("Fixture in null. This should never happen: module:%s, module_fragment:%s, fixture_class:%s, schema:%s" %
-                        (module, module_fragment, fixture_class, schema))
+        raise Exception(
+            "Fixture in null. This should never happen: module:%s, module_fragment:%s, fixture_class:%s, schema:%s"
+            % (module, module_fragment, fixture_class, schema)
+        )
     return fixture
 
-def resolve_fixture(module, module_fragment, fixture_class, schema=settings.CLIENT, *args, **kwargs):
+
+def resolve_fixture(
+    module, module_fragment, fixture_class, schema=settings.CLIENT, *args, **kwargs
+):
     """
         Resolves an optional client-specific class located by the module_string relative to the module
         "client.configuration.[schema]" where schema is the matching ConfigEntity.schema().
@@ -105,30 +125,53 @@ def resolve_fixture(module, module_fragment, fixture_class, schema=settings.CLIE
     """
     if schema:
         try:
-            if kwargs.get('log_traceroute'):
-                logger.warn("Searching for module %s, module_fragment %s, fixture class %s for schema %s" %\
-                            (module, module_fragment, fixture_class, schema))
-            client_fixture_module = resolve_client_module(module, module_fragment, schema)
-            class_members = inspect.getmembers(sys.modules[client_fixture_module.__name__], inspect.isclass)
+            if kwargs.get("log_traceroute"):
+                logger.warn(
+                    "Searching for module %s, module_fragment %s, fixture class %s for schema %s"
+                    % (module, module_fragment, fixture_class, schema)
+                )
+            client_fixture_module = resolve_client_module(
+                module, module_fragment, schema
+            )
+            class_members = inspect.getmembers(
+                sys.modules[client_fixture_module.__name__], inspect.isclass
+            )
             for name, cls in class_members:
                 if issubclass(cls, fixture_class) and cls != fixture_class:
-                    if kwargs.get('log_traceroute'):
+                    if kwargs.get("log_traceroute"):
                         logger.warn("Found matching class %s" % cls)
-                    return cls(schema, *args, **remove_keys(kwargs, ['log_traceroute', 'no_parent_search']))
-        except ImportError, e:
-            if kwargs.get('log_traceroute'):
+                    return cls(
+                        schema,
+                        *args,
+                        **remove_keys(kwargs, ["log_traceroute", "no_parent_search"])
+                    )
+        except ImportError as e:
+            if kwargs.get("log_traceroute"):
                 logger.warn("%s" % e.message)
             # If nothing is found the default is returned below. The second two clauses allow module packages to be absent
-            if not e.message == 'No module named %s' % form_module_name(module, module_fragment, schema) and \
-               not e.message == 'No module named %s' % '.'.join(form_module_name(module, module_fragment, schema).split('.')[1:]) and \
-               not e.message == 'No module named %s' % form_module_name(module, module_fragment, schema).split('.')[-1]:
+            if (
+                not e.message
+                == "No module named %s"
+                % form_module_name(module, module_fragment, schema)
+                and not e.message
+                == "No module named %s"
+                % ".".join(
+                    form_module_name(module, module_fragment, schema).split(".")[1:]
+                )
+                and not e.message
+                == "No module named %s"
+                % form_module_name(module, module_fragment, schema).split(".")[-1]
+            ):
                 raise e
-            if kwargs.get('no_parent_search'):
+            if kwargs.get("no_parent_search"):
                 # Give up, only an exact schema match is desired
                 return None
 
     # We didn't find a module for the given schema. Try the parent schema or default if we are already at region scope
-    return resolve_parent_fixture(module, module_fragment, fixture_class, schema, *args, **kwargs)
+    return resolve_parent_fixture(
+        module, module_fragment, fixture_class, schema, *args, **kwargs
+    )
+
 
 def resolve_fixture_class(module, module_fragment, base_class, schema=settings.CLIENT):
     """
@@ -141,7 +184,9 @@ def resolve_fixture_class(module, module_fragment, base_class, schema=settings.C
     """
     if schema:
         client_project = resolve_client_module(module, module_fragment, schema)
-        class_members = inspect.getmembers(sys.modules[client_project.__name__], inspect.isclass)
+        class_members = inspect.getmembers(
+            sys.modules[client_project.__name__], inspect.isclass
+        )
         for name, cls in class_members:
             if issubclass(cls, base_class) and cls != base_class:
                 return cls

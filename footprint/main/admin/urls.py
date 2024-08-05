@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -11,13 +10,11 @@
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
 
-
-from django.conf.urls import url, patterns
+from django.urls import path as url
 
 from footprint.main.admin.views import ufadmin, config_entities
 
-urlpatterns = patterns(
-    '',
-    url(r'^$', ufadmin),
-    url(r'^config_entity', config_entities),
-)
+urlpatterns = [
+    url(r"^$", ufadmin),
+    url(r"^config_entity", config_entities),
+]

@@ -21,28 +21,42 @@ from footprint.main.mixins.name import Name
 from footprint.main.utils.model_utils import classproperty
 from django.conf import settings
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class PresentationMedium(Name, Deletable):
     """
-        Links media to a PresentationConfig and also links the medium to a db_entity of the presentation_config via
-        StyleConfig instances
+    Links media to a PresentationConfig and also links the medium to a db_entity of the presentation_config via
+    StyleConfig instances
     """
+
     objects = InheritanceManager()
 
-    medium = models.ForeignKey(Medium, null=True)
+    medium = models.ForeignKey(Medium, null=True, on_delete=models.PROTECT)
     # The DbEntityInterest of the PresentationMedium.
     # This scopes the PresentationMedium to a certain DbEntity and ConfigEntity
     # If a PresentationMedium is cloned for customization at a certain ConfigEntity scope,
     # the DbEntityInterest is set to that of the same DbEntity and child ConfigEntity
     # When we remove DbEntityInterest in the future this will become DbEntity, which
     # itself will be unique to a ConfigEntity
-    db_entity_interest = models.ForeignKey(DbEntityInterest, null=False)
+    db_entity_interest = models.ForeignKey(
+        DbEntityInterest, null=False, on_delete=models.PROTECT
+    )
 
     # The user who created the db_entity
-    creator = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, related_name='presentation_medium_creator')
+    creator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=False,
+        related_name="presentation_medium_creator",
+        on_delete=models.PROTECT,
+    )
     # The user who last updated the db_entity
-    updater = models.ForeignKey(settings.AUTH_USER_MODEL, null=False, related_name='presentation_medium_updater')
+    updater = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=False,
+        related_name="presentation_medium_updater",
+        on_delete=models.PROTECT,
+    )
 
     @property
     def db_entity(self):
@@ -57,8 +71,7 @@ class PresentationMedium(Name, Deletable):
         :return:
         """
         self.db_entity_interest = DbEntityInterest.objects.get(
-            config_entity=db_entity.config_entity,
-            db_entity=db_entity
+            config_entity=db_entity.config_entity, db_entity=db_entity
         )
 
     @property
@@ -67,7 +80,11 @@ class PresentationMedium(Name, Deletable):
             Subclasses the medium instance to get at the LayerStyle instance, if it exists
         :return:
         """
-        return Medium.objects.filter(id=self.medium.id).get_subclass() if self.medium else None
+        return (
+            Medium.objects.filter(id=self.medium.id).get_subclass()
+            if self.medium
+            else None
+        )
 
     @medium_subclassed.setter
     def medium_subclassed(self, medium):
@@ -101,7 +118,7 @@ class PresentationMedium(Name, Deletable):
             We use db_entity_key as the instance's unique key within the scope of a ConfigEntity
         :return:
         """
-        return 'db_entity_interest.db_entity.key'
+        return "db_entity_interest.db_entity.key"
 
     # Optional configuration meant for non-stylistic or medium related value. For instance, a result graph might store
     # it's axis labels and axis increments here
@@ -121,7 +138,9 @@ class PresentationMedium(Name, Deletable):
         return self.db_entity_interest.config_entity.subclassed
 
     def __unicode__(self):
-        return "db_entity_key:{0}, medium: {1}".format(self.db_entity_key, unicode(self.medium))
+        return "db_entity_key:{0}, medium: {1}".format(
+            self.db_entity_key, unicode(self.medium)
+        )
 
     def query(self):
         return self.get_data()
@@ -137,7 +156,9 @@ class PresentationMedium(Name, Deletable):
             :param kwargs['values'] overrides or provides the DbEntity query with
         :return:
         """
-        return self.db_entity_interest.db_entity.run_query(self.config_entity.subclassed, **kwargs)
+        return self.db_entity_interest.db_entity.run_query(
+            self.config_entity.subclassed, **kwargs
+        )
 
     @property
     def owning_presentation(self):
@@ -147,5 +168,5 @@ class PresentationMedium(Name, Deletable):
     _no_post_save_publishing = False
 
     class Meta(object):
-        app_label = 'main'
-        verbose_name_plural = 'presentation_media'
+        app_label = "main"
+        verbose_name_plural = "presentation_media"

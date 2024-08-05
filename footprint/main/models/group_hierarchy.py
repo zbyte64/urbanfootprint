@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -19,21 +18,29 @@ from footprint.main.models.keys.user_group_key import UserGroupKey
 
 logger = logging.getLogger(__name__)
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 class GroupHierarchy(models.Model):
     """
-        Simple class to relate Group instances
+    Simple class to relate Group instances
     """
-    group = OneToOneField('auth.Group', related_name='group_hierarchy')
+
+    group = OneToOneField(
+        "auth.Group", related_name="group_hierarchy", on_delete=models.PROTECT
+    )
     # The corresponding global Group of this Group (e.g. Manager for Foo_Manager) and
     # The parent ConfigEntity Groups of this Group (e.g. Foo_Manager and Foo_User for Bar_User if Bar is Foo's child
     # ConfigEntity
-    superiors = ManyToManyField('auth.Group', related_name='subordinates', null=True)
+    superiors = ManyToManyField("auth.Group", related_name="subordinates", null=True)
     # Used for Groups scoped to ConfigEntities. Each ConfigEntity has one or more Groups
     # automatically created for it, except for GlobalConfig which uses the the global Admin Group
-    config_entity = ForeignKey('main.ConfigEntity', related_name='group_hierarchies', null=True)
+    config_entity = ForeignKey(
+        "main.ConfigEntity",
+        related_name="group_hierarchies",
+        null=True,
+        on_delete=models.SET_NULL,
+    )
 
     def all_superiors(self):
         """
@@ -49,16 +56,22 @@ class GroupHierarchy(models.Model):
         superiors = self.superiors.all()
         return unique(
             flat_map(
-                lambda superior: [superior]+superior.group_hierarchy.all_superiors(), superiors),
-            lambda obj: obj.id)
+                lambda superior: [superior] + superior.group_hierarchy.all_superiors(),
+                superiors,
+            ),
+            lambda obj: obj.id,
+        )
 
     def globalized_group(self):
         """
             Resolve self.group to a global group, meaning one of the groups in UserGroupKey.GLOBAL
         :return:
         """
-        return self.group if self.group.name in UserGroupKey.GLOBAL else \
-            self.superiors.get(name__in=UserGroupKey.GLOBAL)
+        return (
+            self.group
+            if self.group.name in UserGroupKey.GLOBAL
+            else self.superiors.get(name__in=UserGroupKey.GLOBAL)
+        )
 
     @property
     def global_subordinate(self):
@@ -73,9 +86,11 @@ class GroupHierarchy(models.Model):
         for subordinate in subordinates:
             if subordinate.group.name in UserGroupKey.GLOBAL:
                 return subordinate.group
-        raise Exception("No global subordinate found for global group: %s" % global_group.name)
+        raise Exception(
+            "No global subordinate found for global group: %s" % global_group.name
+        )
 
     objects = GeoInheritanceManager()
 
     class Meta:
-        app_label = 'main'
+        app_label = "main"

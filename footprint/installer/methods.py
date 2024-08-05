@@ -562,7 +562,7 @@ def build_database(build_type='dev', **kwargs):
     elif build_type == 'prod':
         build_type = 'init'
     with cd(get_django_setting(build_type, 'ROOT_PATH')):
-        args = ' '.join(["--{}={}".format(key, value) for key, value in kwargs.iteritems()])
+        args = ' '.join(["--{}={}".format(key, value) for key, value in kwargs.items()])
         manage_py('footprint_init %s' % args, build_type)
 
 

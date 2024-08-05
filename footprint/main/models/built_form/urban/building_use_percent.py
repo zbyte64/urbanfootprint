@@ -19,7 +19,7 @@ from footprint.main.models.constants import Constants
 from footprint.main.models.keys.keys import Keys
 
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 class BuildingUsePercent(Percent):
@@ -27,16 +27,23 @@ class BuildingUsePercent(Percent):
     Describes the percent of :model:`main.BuildingUseDefinition` present in a particular
     :model:`main.BuildingAttributeSet`.
     """
+
     objects = GeoInheritanceManager()
 
-    building_attribute_set = models.ForeignKey('BuildingAttributeSet')
-    building_use_definition = models.ForeignKey('BuildingUseDefinition')
+    building_attribute_set = models.ForeignKey(
+        "BuildingAttributeSet", on_delete=models.PROTECT
+    )
+    building_use_definition = models.ForeignKey(
+        "BuildingUseDefinition", on_delete=models.PROTECT
+    )
 
     # describes the ratio : use areas / (common areas + use areas)
-    efficiency = models.DecimalField(max_digits=6, decimal_places=4, default=.85)
+    efficiency = models.DecimalField(max_digits=6, decimal_places=4, default=0.85)
 
     # describes the number of square feet per unit ( dwelling unit or employee ) of the building
-    square_feet_per_unit = models.DecimalField(max_digits=11, decimal_places=3, null=True)
+    square_feet_per_unit = models.DecimalField(
+        max_digits=11, decimal_places=3, null=True
+    )
 
     ## derived attributes
     # area measured in acres
@@ -44,11 +51,14 @@ class BuildingUsePercent(Percent):
     unit_density = models.DecimalField(max_digits=16, decimal_places=10, null=True)
 
     # area measured in square feet
-    gross_built_up_area = models.DecimalField(max_digits=13, decimal_places=3, null=True)
+    gross_built_up_area = models.DecimalField(
+        max_digits=13, decimal_places=3, null=True
+    )
     net_built_up_area = models.DecimalField(max_digits=13, decimal_places=3, null=True)
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"
+
     def __unicode__(self):
         use = self.building_use_definition
         return use.name
@@ -61,21 +71,40 @@ class BuildingUsePercent(Percent):
         residential building_use_definitions).
         """
 
-        parcel_far = self.building_attribute_set.total_far  # / self.building_attribute_set.gross_net_ratio
+        parcel_far = (
+            self.building_attribute_set.total_far
+        )  # / self.building_attribute_set.gross_net_ratio
         self.floor_area_ratio = self.percent * parcel_far
 
         if self.building_use_definition.name == Keys.DETACHED_SINGLE_FAMILY:
-            self.gross_built_up_area = self.square_feet_per_unit * (Constants.SQUARE_FEET_PER_ACRE / self.building_attribute_set.lot_size_square_feet)
+            self.gross_built_up_area = self.square_feet_per_unit * (
+                Constants.SQUARE_FEET_PER_ACRE
+                / self.building_attribute_set.lot_size_square_feet
+            )
         else:
-            self.gross_built_up_area = self.floor_area_ratio * self.building_attribute_set.lot_size_square_feet * \
-                (Constants.SQUARE_FEET_PER_ACRE / self.building_attribute_set.lot_size_square_feet)
+            self.gross_built_up_area = (
+                self.floor_area_ratio
+                * self.building_attribute_set.lot_size_square_feet
+                * (
+                    Constants.SQUARE_FEET_PER_ACRE
+                    / self.building_attribute_set.lot_size_square_feet
+                )
+            )
 
         self.net_built_up_area = self.gross_built_up_area * self.efficiency
 
-        percent_of_parcel_acres = self.percent  # / self.building_attribute_set.gross_net_ratio
+        percent_of_parcel_acres = (
+            self.percent
+        )  # / self.building_attribute_set.gross_net_ratio
 
-        if self.building_use_definition.name == Keys.DETACHED_SINGLE_FAMILY and self.building_attribute_set.lot_size_square_feet:
-            residential_lots_per_acre = Constants.SQUARE_FEET_PER_ACRE / self.building_attribute_set.lot_size_square_feet
+        if (
+            self.building_use_definition.name == Keys.DETACHED_SINGLE_FAMILY
+            and self.building_attribute_set.lot_size_square_feet
+        ):
+            residential_lots_per_acre = (
+                Constants.SQUARE_FEET_PER_ACRE
+                / self.building_attribute_set.lot_size_square_feet
+            )
             self.unit_density = percent_of_parcel_acres * residential_lots_per_acre
         else:
             self.unit_density = self.net_built_up_area / self.square_feet_per_unit

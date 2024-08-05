@@ -15,15 +15,17 @@ from django.db import models
 from footprint.main.models.geospatial.db_entity import DbEntity
 from footprint.main.models.presentation.geo_library import GeoLibrary
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class GeoLibraryCatalog(models.Model):
     """
-        A collection of DbEntities for orderable display
+    A collection of DbEntities for orderable display
     """
-    entity = models.ForeignKey(DbEntity)
-    geo_library = models.ForeignKey(GeoLibrary)
+
+    entity = models.ForeignKey(DbEntity, on_delete=models.PROTECT)
+    geo_library = models.ForeignKey(GeoLibrary, on_delete=models.PROTECT)
     position = models.IntegerField()
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"

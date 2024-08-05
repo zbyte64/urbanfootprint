@@ -57,7 +57,7 @@ class Command(BaseCommand):
         if not os.path.exists(options['destination_folder']):
             try:
                 os.makedirs(options['destination_folder'])
-            except Exception, e:
+            except Exception as e:
                 raise Exception("Cannot create directory with user %s. Exception %s" % (
                     pwd.getpwuid(os.getuid())[0],
                     e.message))

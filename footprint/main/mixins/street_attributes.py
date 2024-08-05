@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -11,21 +10,25 @@
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
-
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 from django.contrib.gis.db import models
-from footprint.main.models.built_form.infrastructure.infrastructure_attribute_set import StreetAttributeSet
+from footprint.main.models.built_form.infrastructure.infrastructure_attribute_set import (
+    StreetAttributeSet,
+)
+
 
 class StreetAttributes(models.Model):
     class Meta:
         abstract = True
-        app_label = 'main'
+        app_label = "main"
 
-    street_attributes = models.ForeignKey(StreetAttributeSet, null=True)
+    street_attributes = models.ForeignKey(
+        StreetAttributeSet, null=True, on_delete=models.PROTECT
+    )
 
     def attributes(self):
-        return 'building'
+        return "building"

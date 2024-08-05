@@ -13,15 +13,15 @@
 
 from django.contrib.gis.db import models
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 class Geography(models.Model):
     """
-        Represents a geographic shape such as a parcel, grid cell, line, etc. Other classes having features should
-        associate to subclasses of this subclass it.
+    Represents a geographic shape such as a parcel, grid cell, line, etc. Other classes having features should
+    associate to subclasses of this subclass it.
     """
-    objects = models.GeoManager()
+
     geometry = models.GeometryField()
     # An identifier that uniquely identifies the source table that provided these geographies.
     source_table_id = models.IntegerField(null=False, db_index=True)
@@ -29,5 +29,5 @@ class Geography(models.Model):
     source_id = models.IntegerField(null=False, db_index=True, max_length=200)
 
     class Meta(object):
-        abstract = True,
-        app_label = 'main'
+        abstract = (True,)
+        app_label = "main"

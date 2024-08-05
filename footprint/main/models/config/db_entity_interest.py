@@ -13,28 +13,33 @@
 
 from django.db import models
 
-from footprint.main.managers.config.db_entity_interest_manager import DbEntityInterestManager
+from footprint.main.managers.config.db_entity_interest_manager import (
+    DbEntityInterestManager,
+)
 from footprint.main.mixins.deletable import Deletable
 from footprint.main.models.geospatial.db_entity import DbEntity
 from footprint.main.models.config.interest import Interest
 from footprint.main.models.feature.feature_class_creator import FeatureClassCreator
 
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class DbEntityInterest(Deletable):
     """
-        TODO remove and use implicit through class
+    TODO remove and use implicit through class
     """
+
     objects = DbEntityInterestManager()
 
     # A class name is used to avoid circular dependency
-    config_entity = models.ForeignKey('ConfigEntity', null=False)
-    db_entity = models.ForeignKey(DbEntity, null=False)
+    config_entity = models.ForeignKey(
+        "ConfigEntity", null=False, on_delete=models.PROTECT
+    )
+    db_entity = models.ForeignKey(DbEntity, null=False, on_delete=models.PROTECT)
     # TODO not used for anything
-    interest = models.ForeignKey(Interest, null=False)
+    interest = models.ForeignKey(Interest, null=False, on_delete=models.PROTECT)
     _no_post_save_publishing = False
-
 
     def config_entity_is_db_entity_owner(self):
         """
@@ -44,7 +49,9 @@ class DbEntityInterest(Deletable):
         return self.config_entity.owns_db_entity(self.db_entity)
 
     def __unicode__(self):
-        return "ConfigEntity:{0}, DbEntity:{1}, Interest:{2}".format(self.config_entity, self.db_entity, self.interest)
+        return "ConfigEntity:{0}, DbEntity:{1}, Interest:{2}".format(
+            self.config_entity, self.db_entity, self.interest
+        )
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"

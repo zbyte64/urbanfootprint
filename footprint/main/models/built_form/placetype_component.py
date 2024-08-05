@@ -21,29 +21,35 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class PlacetypeComponentCategory(Name):
     contributes_to_net = models.BooleanField()
     objects = GeoInheritanceManager()
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"
 
 
 class PlacetypeComponent(BuiltForm, BuiltFormAggregate):
     """
-        PlacetypeComponent represents a mix of PrimaryComponents, such as a "Rural Community College" or a "Boulevard"
+    PlacetypeComponent represents a mix of PrimaryComponents, such as a "Rural Community College" or a "Boulevard"
     """
+
     objects = GeoInheritanceManager()
-    primary_components = models.ManyToManyField(PrimaryComponent, through='PrimaryComponentPercent')
-    component_category = models.ForeignKey(PlacetypeComponentCategory)
+    primary_components = models.ManyToManyField(
+        PrimaryComponent, through="PrimaryComponentPercent"
+    )
+    component_category = models.ForeignKey(
+        PlacetypeComponentCategory, on_delete=models.PROTECT
+    )
 
     def get_component_field(self):
         return self.__class__.primary_components
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"
 
     def calculate_gross_net_ratio(self):
         return 1

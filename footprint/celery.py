@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -11,26 +10,18 @@
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
 from __future__ import absolute_import
-__author__ = 'calthorpe_analytics'
+
+__author__ = "calthorpe_analytics"
 
 import os
 
-from celery import Celery
+from django_tasks import task
 
-app = Celery('footprint',
-             broker='redis://localhost:6379/0',
-             backend='redis://localhost:6379/0',
-             include=['footprint.main.publishing.publishing',
-                     'footprint.main.publishing.data_export_publishing',
-                     'footprint.main.publishing.data_import_publishing',
-                     'footprint.main.models.analysis_module',
-                     'footprint.tasks'])
 
-# Using a string here means the worker will not have to
-# pickle the object when using Windows.
-app.config_from_object('django.conf:settings')
-# app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
+class app:
+    task = task
 
-@app.task(bind=True)
+
+@app.task
 def debug_task(self):
-    print('Request: {0!r}'.format(self.request))
+    print("Request: {0!r}".format(self.request))

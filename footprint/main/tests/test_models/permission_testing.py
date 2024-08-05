@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -13,16 +12,21 @@
 from django.contrib.auth.models import Group, User
 import pprint
 from django.contrib.contenttypes.models import ContentType
-from guardian.core import ObjectPermissionChecker
-from guardian.models import GroupObjectPermission
 from nose.tools import assert_equal
 from footprint.main.lib.functions import get_list_or_if_empty, merge
 from footprint.main.models.keys.permission_key import PermissionKey
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class PermissionTesting(object):
-    def __init__(self, test_configuration, key_class, all_groups=[], instance_key_lambda=lambda instance: instance.key):
+    def __init__(
+        self,
+        test_configuration,
+        key_class,
+        all_groups=[],
+        instance_key_lambda=lambda instance: instance.key,
+    ):
         """
             Tests one or more instances' permsission
         :param test_configuration: a list of dicts in the following format:
@@ -50,44 +54,73 @@ class PermissionTesting(object):
         self.instance_key_lambda = instance_key_lambda
         self.all_groups = all_groups
 
-
     def test_permissions(self):
 
         for configuration in self.test_configuration:
-            instance = configuration['instance']
-            for group_name, permission_key in configuration['groups'].items():
+            instance = configuration["instance"]
+            for group_name, permission_key in configuration["groups"].items():
                 group = Group.objects.get(name=group_name)
-                class_permissions_keys = PermissionKey.permission_keys(permission_key, instance.__class__) if permission_key else []
+                class_permissions_keys = (
+                    PermissionKey.permission_keys(permission_key, instance.__class__)
+                    if permission_key
+                    else []
+                )
                 for permission in class_permissions_keys:
                     # See if the group has all of the expected permissions to the instance
-                    assert ObjectPermissionChecker(group).has_perm(permission, instance), \
-                        "Group %s expected to have %s permission to instance %s with id %s and key %s but doesn't. %s" % \
-                        (group.name,
-                         permission,
-                         instance,
-                         instance.id,
-                         self.key_class.Fab.remove(self.instance_key_lambda(instance)),
-                         get_list_or_if_empty(
-                             ObjectPermissionChecker(group).get_perms(instance),
-                             lambda: 'It has no permissions',
-                             lambda lisst: 'It has permissions: %s' % ', '.join(lisst)
-                         ))
-                for nopermission in set(PermissionKey.permission_keys(PermissionKey.ALL, instance.__class__)) - set(class_permissions_keys):
-                # Make sure the other permissions are not set
-                    assert not ObjectPermissionChecker(group).has_perm(nopermission, instance), \
-                        "Group %s should not have %s permission to instance %s with id %s and key %s but does. %s" % \
-                        (group.name,
-                         nopermission,
-                         instance,
-                         instance.id,
-                         self.key_class.Fab.remove(self.instance_key_lambda(instance)),
-                         'It has permissions: %s' % ', '.join(ObjectPermissionChecker(group).get_perms(instance))
+                    assert ObjectPermissionChecker(group).has_perm(
+                        permission, instance
+                    ), (
+                        "Group %s expected to have %s permission to instance %s with id %s and key %s but doesn't. %s"
+                        % (
+                            group.name,
+                            permission,
+                            instance,
+                            instance.id,
+                            self.key_class.Fab.remove(
+                                self.instance_key_lambda(instance)
+                            ),
+                            get_list_or_if_empty(
+                                ObjectPermissionChecker(group).get_perms(instance),
+                                lambda: "It has no permissions",
+                                lambda lisst: "It has permissions: %s"
+                                % ", ".join(lisst),
+                            ),
                         )
+                    )
+                for nopermission in set(
+                    PermissionKey.permission_keys(PermissionKey.ALL, instance.__class__)
+                ) - set(class_permissions_keys):
+                    # Make sure the other permissions are not set
+                    assert not ObjectPermissionChecker(group).has_perm(
+                        nopermission, instance
+                    ), (
+                        "Group %s should not have %s permission to instance %s with id %s and key %s but does. %s"
+                        % (
+                            group.name,
+                            nopermission,
+                            instance,
+                            instance.id,
+                            self.key_class.Fab.remove(
+                                self.instance_key_lambda(instance)
+                            ),
+                            "It has permissions: %s"
+                            % ", ".join(
+                                ObjectPermissionChecker(group).get_perms(instance)
+                            ),
+                        )
+                    )
 
             # Test that any configured users are in the expected group
-            for group_name, user_name in configuration.get('users', {}).items():
+            for group_name, user_name in configuration.get("users", {}).items():
                 user = User.objects.get(username=user_name)
                 group = Group.objects.get(name=group_name)
-                assert_equal(user.groups.filter(name=group).count(), 1,
-                             "Expected user %s to be in group %s, but it wasn't. User is in the following groups %s" %
-                             (user_name, group_name, ', '.join(user.groups.values_list('name', flat=True))))
+                assert_equal(
+                    user.groups.filter(name=group).count(),
+                    1,
+                    "Expected user %s to be in group %s, but it wasn't. User is in the following groups %s"
+                    % (
+                        user_name,
+                        group_name,
+                        ", ".join(user.groups.values_list("name", flat=True)),
+                    ),
+                )

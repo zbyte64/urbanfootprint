@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -14,14 +13,13 @@ import logging
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group, UserManager
-from tastypie.models import ApiKey
 from django.conf import settings
 from footprint.client.configuration.fixture import UserFixture
 from footprint.main.lib.functions import get_single_value_or_create
 from footprint.main.models.group_hierarchy import GroupHierarchy
 
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 logger = logging.getLogger(__name__)
@@ -29,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 def update_or_create_users():
     from footprint.client.configuration.utils import resolve_fixture
+
     init_fixture = resolve_fixture("user", "user", UserFixture, settings.CLIENT)
     for user_configuration in init_fixture.users():
         update_or_create_user(**user_configuration)
@@ -48,20 +47,24 @@ def update_or_create_group(name, config_entity=None, superiors=None):
     """
     group = get_single_value_or_create(
         Group.objects.filter(name=name),
-        lambda: Group.objects.get_or_create(name=name)[0])
+        lambda: Group.objects.get_or_create(name=name)[0],
+    )
     # Make sure the group has full permission to every model
     # We limit permission on individual instances
-    new_permissions = set(Permission.objects.all())-set(group.permissions.all())
+    new_permissions = set(Permission.objects.all()) - set(group.permissions.all())
     group.permissions.add(*new_permissions)
     # Track the superiors in our special class
     try:
-        superior_groups = map(lambda superior: Group.objects.get(name=superior), superiors or [])
+        superior_groups = map(
+            lambda superior: Group.objects.get(name=superior), superiors or []
+        )
     except:
-        raise Exception("Expected groups %s to exist but only these exist: %s" %\
-              (superiors, Group.objects.values_list('name')))
+        raise Exception(
+            "Expected groups %s to exist but only these exist: %s"
+            % (superiors, Group.objects.values_list("name"))
+        )
     group_hierarchy, created, updated = GroupHierarchy.objects.update_or_create(
-        group=group,
-        defaults=dict(config_entity=config_entity)
+        group=group, defaults=dict(config_entity=config_entity)
     )
     if not created:
         group_hierarchy.superiors.clear()
@@ -69,7 +72,17 @@ def update_or_create_group(name, config_entity=None, superiors=None):
         group_hierarchy.superiors.add(superior_group)
     return group
 
-def update_or_create_user(username=None, password=None, email=None, api_key=None, groups=None, is_super_user=False, first_name=None, last_name=None):
+
+def update_or_create_user(
+    username=None,
+    password=None,
+    email=None,
+    api_key=None,
+    groups=None,
+    is_super_user=False,
+    first_name=None,
+    last_name=None,
+):
     """
         Update/Create the user matching the username
     :param username: the User.username
@@ -89,10 +102,12 @@ def update_or_create_user(username=None, password=None, email=None, api_key=None
     user_manager = get_user_model().objects
     user = get_single_value_or_create(
         user_manager.filter(username=username),
-        lambda: user_manager.create_user(username, email, password) if \
-            not is_super_user else \
-            user_manager.create_superuser(username, email, password))
-
+        lambda: (
+            user_manager.create_user(username, email, password)
+            if not is_super_user
+            else user_manager.create_superuser(username, email, password)
+        ),
+    )
 
     # Update these in case the configuration was updated
     user.email = UserManager.normalize_email(email)
@@ -115,14 +130,11 @@ def update_or_create_user(username=None, password=None, email=None, api_key=None
         user.groups.clear()
         for group in groups:
             user.groups.add(Group.objects.get_or_create(name=group)[0])
-        logger.info("Assigned user %s to groups %s",
-            user.email,
-            ', '.join(groups)
-        )
+        logger.info("Assigned user %s to groups %s", user.email, ", ".join(groups))
 
     # Make sure the user has permission to update every class
     # We limit permissions on individual instances
-    new_permissions = set(Permission.objects.all())-set(user.user_permissions.all())
+    new_permissions = set(Permission.objects.all()) - set(user.user_permissions.all())
     user.user_permissions.add(*new_permissions)
     api_key_instance = ApiKey.objects.get_or_create(user=user)[0]
     if api_key and api_key_instance.key != api_key:
@@ -134,4 +146,4 @@ def update_or_create_user(username=None, password=None, email=None, api_key=None
     if not settings.FOOTPRINT_INIT:
         on_user_post_save(sender=get_user_model(), instance=user)
 
-    return {'user': user, 'api_key': api_key_instance}
+    return {"user": user, "api_key": api_key_instance}

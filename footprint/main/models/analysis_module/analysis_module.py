@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -14,13 +13,14 @@ import logging
 import sys
 import traceback
 from copy import deepcopy
-from string import capitalize
 
 from datetime import datetime
 from django.conf import settings
 from django.db import models
 from django.db.models import DateField
-from django.utils.timezone import utc
+import datetime
+
+utc = datetime.timezone.utc
 from picklefield import PickledObjectField
 
 from footprint.celery import app
@@ -38,28 +38,42 @@ from footprint.utils.websockets import send_message_to_client
 
 logger = logging.getLogger(__name__)
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class AnalysisModule(SharedKey, Name, Deletable):
     """
-        No longer abstract. This is a single concrete class.
+    No longer abstract. This is a single concrete class.
     """
 
     objects = GeoInheritanceManager()
+
     class Meta(object):
         abstract = False
-        app_label = 'main'
+        app_label = "main"
 
     started = DateField(null=True)
     completed = DateField(null=True)
     failed = DateField(null=True)
 
     # The user who created the db_entity
-    creator = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, related_name='analysis_module_creator')
+    creator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        related_name="analysis_module_creator",
+        on_delete=models.PROTECT,
+    )
     # The user who last updated the db_entity
-    updater = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, related_name='analysis_module_updater')
+    updater = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        related_name="analysis_module_updater",
+        on_delete=models.PROTECT,
+    )
 
-    config_entity = models.ForeignKey(ConfigEntity, null=False)
+    config_entity = models.ForeignKey(
+        ConfigEntity, null=False, on_delete=models.PROTECT
+    )
     analysis_tools = models.ManyToManyField(AnalysisTool)
 
     # Describes the partner organization(s) involved in development of the module
@@ -74,7 +88,7 @@ class AnalysisModule(SharedKey, Name, Deletable):
 
     def __getattr__(self, attr_name):
         """
-            Delegate names to the configuration dict
+        Delegate names to the configuration dict
         """
         if attr_name in self.configuration.keys():
             # Configuration value exists
@@ -88,23 +102,36 @@ class AnalysisModule(SharedKey, Name, Deletable):
     @property
     def analysis_module_configuration(self):
         """
-            Restores the AnalysisModuleConfiguration that created this AnalysisModule
+        Restores the AnalysisModuleConfiguration that created this AnalysisModule
         """
-        return AnalysisModuleConfiguration(merge(self.configuration, dict(name=self.name, description=self.description,
-                                                                          key=self.key)))
+        return AnalysisModuleConfiguration(
+            merge(
+                self.configuration,
+                dict(name=self.name, description=self.description, key=self.key),
+            )
+        )
 
     # The most recent run of the celery task
     celery_task = None
 
     _started = False
+
     def init(self):
-        for analysis_tool_configuration in self.analysis_module_configuration.analysis_tools:
-            analysis_tool_class = resolve_module_attr(analysis_tool_configuration.get('class_name'))
+        for (
+            analysis_tool_configuration
+        ) in self.analysis_module_configuration.analysis_tools:
+            analysis_tool_class = resolve_module_attr(
+                analysis_tool_configuration.get("class_name")
+            )
             analysis_tool_class._no_post_save_publishing = True
-            analysis_tool, created, updated = analysis_tool_class.objects.update_or_create(
-                config_entity=self.config_entity,
-                key=analysis_tool_configuration['key'],
-                defaults=remove_keys(analysis_tool_configuration, ['key', 'class_name'])
+            analysis_tool, created, updated = (
+                analysis_tool_class.objects.update_or_create(
+                    config_entity=self.config_entity,
+                    key=analysis_tool_configuration["key"],
+                    defaults=remove_keys(
+                        analysis_tool_configuration, ["key", "class_name"]
+                    ),
+                )
             )
             analysis_tool.initialize(created)
             analysis_tool_class._no_post_save_publishing = False
@@ -114,12 +141,11 @@ class AnalysisModule(SharedKey, Name, Deletable):
     def start(self, **kwargs):
         self._started = True
         config_entity = self.config_entity.subclassed
-        logger.info('Starting AnalysisModule %s Started for ConfigEntity %s' % (self.name, config_entity.name))
-        job = Job.objects.create(
-            type=self.key,
-            status="New",
-            user=self.updater
+        logger.info(
+            "Starting AnalysisModule %s Started for ConfigEntity %s"
+            % (self.name, config_entity.name)
         )
+        job = Job.objects.create(type=self.key, status="New", user=self.updater)
         job.save()
         self.started = job.created_on
         self.save()
@@ -130,7 +156,7 @@ class AnalysisModule(SharedKey, Name, Deletable):
             args=[job, self.updater, config_entity.id, self.key, kwargs],
             soft_time_limit=3600,
             time_limit=3600,
-            countdown=1
+            countdown=1,
         )
 
         job = Job.objects.get(hashid=job.hashid)
@@ -143,7 +169,10 @@ class AnalysisModule(SharedKey, Name, Deletable):
         return self.celery_task.status if self.celery_task else None
 
     def time_since_completion(self):
-        return datetime.utcnow() - self.celery_task.completed if self.celery_task else None
+        return (
+            datetime.utcnow() - self.celery_task.completed if self.celery_task else None
+        )
+
 
 @app.task
 def analysis_module_task(job, user, config_entity_id, key, kwargs):
@@ -156,40 +185,61 @@ def analysis_module_task(job, user, config_entity_id, key, kwargs):
     try:
         # TODO progress calls should be moved to each module so the status bar increments on the client
         # logger.info('AnalysisModule %s Started for ConfigEntity %s with kwarg keys' % (analysis_module.name, config_entity.name, ', '.join(kwargs or dict().keys())))
-        send_message_to_client(user.id, dict(
-            event='postSavePublisherStarted'.format(capitalize(key)),
-            job_id=str(job.hashid),
-            config_entity_id=config_entity.id,
-            ids=[analysis_module.id],
-            class_name='AnalysisModule',
-            key=analysis_module.key))
+        send_message_to_client(
+            user.id,
+            dict(
+                event="postSavePublisherStarted".format(key.capitalize()),
+                job_id=str(job.hashid),
+                config_entity_id=config_entity.id,
+                ids=[analysis_module.id],
+                class_name="AnalysisModule",
+                key=analysis_module.key,
+            ),
+        )
 
         # Call each tool's update method
         for analysis_tool in analysis_module.analysis_tools.all().select_subclasses():
             updated_kwargs = deepcopy(kwargs)
-            updated_kwargs.update(dict(analysis_module=analysis_module, user=user, job=job, key=key))
+            updated_kwargs.update(
+                dict(analysis_module=analysis_module, user=user, job=job, key=key)
+            )
             analysis_tool.update(**updated_kwargs)
 
         # Call the post save publisher
-        from footprint.main.publishing.config_entity_publishing import post_save_config_entity_analysis_module
-        post_save_config_entity_analysis_module.send(sender=config_entity.__class__, config_entity=config_entity, analysis_module=analysis_module)
+        from footprint.main.publishing.config_entity_publishing import (
+            post_save_config_entity_analysis_module,
+        )
 
-        logger.info('AnalysisModule %s Completed for ConfigEntity %s' % (analysis_module.name, config_entity.name))
-        logger.info('Sending message to client postSavePublisherCompleted to user %s for module %s and config entity %s' % \
-                     (user.username, analysis_module.name, config_entity.name))
-        send_message_to_client(user.id,
-                               dict(event='postSavePublisherCompleted',
-                                    job_id=str(job.hashid),
-                                    config_entity_id=config_entity.id,
-                                    ids=[analysis_module.id],
-                                    class_name='AnalysisModule',
-                                    key=analysis_module.key)
+        post_save_config_entity_analysis_module.send(
+            sender=config_entity.__class__,
+            config_entity=config_entity,
+            analysis_module=analysis_module,
+        )
+
+        logger.info(
+            "AnalysisModule %s Completed for ConfigEntity %s"
+            % (analysis_module.name, config_entity.name)
+        )
+        logger.info(
+            "Sending message to client postSavePublisherCompleted to user %s for module %s and config entity %s"
+            % (user.username, analysis_module.name, config_entity.name)
+        )
+        send_message_to_client(
+            user.id,
+            dict(
+                event="postSavePublisherCompleted",
+                job_id=str(job.hashid),
+                config_entity_id=config_entity.id,
+                ids=[analysis_module.id],
+                class_name="AnalysisModule",
+                key=analysis_module.key,
+            ),
         )
         analysis_module.completed = datetime.utcnow().replace(tzinfo=utc)
         analysis_module.save()
         analysis_module._started = False
 
-    except Exception, e:
+    except Exception as e:
         try:
             analysis_module.failed = datetime.utcnow().replace(tzinfo=utc)
             analysis_module.save()
@@ -197,16 +247,20 @@ def analysis_module_task(job, user, config_entity_id, key, kwargs):
             analysis_module._started = False
 
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        readable_exception = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        readable_exception = traceback.format_exception(
+            exc_type, exc_value, exc_traceback
+        )
         logger.error(readable_exception)
-        send_message_to_client(user.id,
-                               dict(event='postSavePublisherFailed',
-                                    job_id=str(job.hashid),
-                                    config_entity_id=config_entity.id,
-                                    ids=[analysis_module.id],
-                                    class_name='AnalysisModule',
-                                    key=analysis_module.key
-                               )
+        send_message_to_client(
+            user.id,
+            dict(
+                event="postSavePublisherFailed",
+                job_id=str(job.hashid),
+                config_entity_id=config_entity.id,
+                ids=[analysis_module.id],
+                class_name="AnalysisModule",
+                key=analysis_module.key,
+            ),
         )
         raise Exception(readable_exception)
     finally:
@@ -217,66 +271,71 @@ def analysis_module_task(job, user, config_entity_id, key, kwargs):
 class AnalysisModuleKey(Keys):
     class Fab(Keys.Fab):
         @classmethod
-
         def prefix(cls):
             return None
 
     # Predefined keys for convenience
-    SCENARIO_BUILDER = Fab.ricate('core')
-    ENVIRONMENTAL_CONSTRAINT = Fab.ricate('environmental_constraint')
-    ENVIRONMENTAL_CONSTRAINT_INITIALIZER = Fab.ricate('environmental_constraint_initializer')
-    FISCAL = Fab.ricate('fiscal')
-    VMT = Fab.ricate('vmt')
-    ENERGY = Fab.ricate('energy')
-    WATER = Fab.ricate('water')
+    SCENARIO_BUILDER = Fab.ricate("core")
+    ENVIRONMENTAL_CONSTRAINT = Fab.ricate("environmental_constraint")
+    ENVIRONMENTAL_CONSTRAINT_INITIALIZER = Fab.ricate(
+        "environmental_constraint_initializer"
+    )
+    FISCAL = Fab.ricate("fiscal")
+    VMT = Fab.ricate("vmt")
+    ENERGY = Fab.ricate("energy")
+    WATER = Fab.ricate("water")
 
-    PUBLIC_HEALTH = Fab.ricate('public_health')
+    PUBLIC_HEALTH = Fab.ricate("public_health")
 
-    AGRICULTURE = Fab.ricate('agriculture')
-    AGRICULTURE_ANALYSIS = Fab.ricate('agriculture_analysis')
-    MERGE_MODULE = Fab.ricate('merge_module')
+    AGRICULTURE = Fab.ricate("agriculture")
+    AGRICULTURE_ANALYSIS = Fab.ricate("agriculture_analysis")
+    MERGE_MODULE = Fab.ricate("merge_module")
 
 
 class AnalysisModuleConfiguration(object):
     """
-        A flexible configuration class for AnalysisModule dynamic subclasses.
-        This is roughly parallel to a DbEntity. DbEntity has feature_class_configuration to configure the dynamic class
-        and this has configuration.
+    A flexible configuration class for AnalysisModule dynamic subclasses.
+    This is roughly parallel to a DbEntity. DbEntity has feature_class_configuration to configure the dynamic class
+    and this has configuration.
     """
+
     def __init__(self, configuration):
 
-        self.abstract_class_name = full_module_path(configuration['abstract_class']) if \
-                                configuration.get('abstract_class') else \
-                                configuration.get('abstract_class_name', full_module_path(AnalysisModule))
-        self.configuration = remove_keys(configuration, ['key', 'name', 'description'])
-        self.name = configuration.get('name')
-        self.description = configuration.get('description')
-        self.partner_description = configuration.get('partner_description')
-        self.key = configuration.get('key')
-        self.analysis_tools = configuration.get('analysis_tools', [])
+        self.abstract_class_name = (
+            full_module_path(configuration["abstract_class"])
+            if configuration.get("abstract_class")
+            else configuration.get(
+                "abstract_class_name", full_module_path(AnalysisModule)
+            )
+        )
+        self.configuration = remove_keys(configuration, ["key", "name", "description"])
+        self.name = configuration.get("name")
+        self.description = configuration.get("description")
+        self.partner_description = configuration.get("partner_description")
+        self.key = configuration.get("key")
+        self.analysis_tools = configuration.get("analysis_tools", [])
         super(AnalysisModuleConfiguration, self).__init__()
-
 
     # Describes how to configure the features of the table
     configuration = PickledObjectField(null=True, default=lambda: {})
 
     # These are the keys allowed in the configuration. They can be changed at any time
     CONFIGURATION_KEYS = [
-        'key',
-        'name',
-        'description',
-        'initializer_task_name',
-        'task_name',
-        'analysis_tools'
+        "key",
+        "name",
+        "description",
+        "initializer_task_name",
+        "task_name",
+        "analysis_tools"
         # Class-level attributes.
-        'class_attrs',
+        "class_attrs",
         # Indicates that the AnalysisModuleConfiguration was generated and not for a pre-configured AnalysisModule
-        'generated'
+        "generated",
     ]
 
     def __getattr__(self, attr_name):
         """
-            Delegate names to the configuration dict
+        Delegate names to the configuration dict
         """
         if attr_name in self.configuration.keys():
             # Configuration value exists
@@ -289,7 +348,7 @@ class AnalysisModuleConfiguration(object):
 
     class Meta(object):
         abstract = False
-        app_label = 'main'
+        app_label = "main"
 
     @classmethod
     def analysis_module_configuration(cls, config_entity, **kwargs):
@@ -297,21 +356,20 @@ class AnalysisModuleConfiguration(object):
             return cls.abstract_analysis_module_configuration(**kwargs)
 
         configuration = merge(
-            remove_keys(kwargs, ['class_scope']),
-            dict(generated=False))
+            remove_keys(kwargs, ["class_scope"]), dict(generated=False)
+        )
 
         return AnalysisModuleConfiguration(configuration)
 
     @classmethod
     def abstract_analysis_module_configuration(cls, **kwargs):
         """
-            Abstract version of the configuration for use when no ConfigEntity is specified
+        Abstract version of the configuration for use when no ConfigEntity is specified
         """
 
         configuration = merge(
-            remove_keys(kwargs, ['class_scope']),
-            dict(
-                class_attrs={'key': kwargs['key']},
-                generated=False))
+            remove_keys(kwargs, ["class_scope"]),
+            dict(class_attrs={"key": kwargs["key"]}, generated=False),
+        )
 
         return AnalysisModuleConfiguration(configuration)

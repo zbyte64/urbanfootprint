@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -11,13 +10,18 @@
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
 from django.db import models
-from footprint.client.configuration.sacog.built_form.sacog_land_use_definition import SacogLandUseDefinition
+from footprint.client.configuration.sacog.built_form.sacog_land_use_definition import (
+    SacogLandUseDefinition,
+)
 from footprint.main.managers.geo_inheritance_manager import GeoInheritanceManager
 from footprint.main.models.built_form.client_land_use import ClientLandUse
 
+
 class SacogLandUse(ClientLandUse):
     objects = GeoInheritanceManager()
-    land_use_definition = models.ForeignKey(SacogLandUseDefinition, null=False)
+    land_use_definition = models.ForeignKey(
+        SacogLandUseDefinition, null=False, on_delete=models.PROTECT
+    )
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"

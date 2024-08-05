@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -22,35 +21,40 @@ from footprint.main.models.analysis_module.analysis_tool import AnalysisTool
 from footprint.main.utils.subclasses import receiver_subclasses
 from footprint.utils.websockets import send_message_to_client
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 logger = logging.getLogger(__name__)
 
+
 class MergeUpdaterTool(AnalysisTool):
 
     db_entity_key = models.CharField(max_length=100, null=True, blank=True)
-    target_config_entity = models.ForeignKey('ConfigEntity', null=True, blank=True)
+    target_config_entity = models.ForeignKey(
+        "ConfigEntity", null=True, blank=True, on_delete=models.PROTECT
+    )
 
     objects = GeoInheritanceManager()
 
     class Meta(object):
-        app_label = 'main'
+        app_label = "main"
         abstract = False
 
     def merge_progress(self, proportion, **kwargs):
 
-        send_message_to_client(kwargs['user'].id, dict(
-            event='postSavePublisherProportionCompleted',
-            job_id=str(kwargs['job'].hashid),
-            config_entity_id=self.config_entity.id,
-            ids=[kwargs['analysis_module'].id],
-            class_name='AnalysisModule',
-            key=kwargs['analysis_module'].key,
-            proportion=proportion)
+        send_message_to_client(
+            kwargs["user"].id,
+            dict(
+                event="postSavePublisherProportionCompleted",
+                job_id=str(kwargs["job"].hashid),
+                config_entity_id=self.config_entity.id,
+                ids=[kwargs["analysis_module"].id],
+                class_name="AnalysisModule",
+                key=kwargs["analysis_module"].key,
+                proportion=proportion,
+            ),
         )
         logger.info("Progress {0}".format(proportion))
-
 
     def update(self, **kwargs):
         logger.info("Executing Merge using {0}".format(self.config_entity))
@@ -64,34 +68,44 @@ class MergeUpdaterTool(AnalysisTool):
 
         source_config_entity = self.config_entity
         target_config_entity = self.target_config_entity
-        print ' source'
-        print source_config_entity
-        print ' target'
-        print target_config_entity
+        print(" source")
+        print(source_config_entity)
+        print(" target")
+        print(target_config_entity)
 
-        source_feature_class = source_config_entity.db_entity_feature_class(self.db_entity_key)
+        source_feature_class = source_config_entity.db_entity_feature_class(
+            self.db_entity_key
+        )
         source_db_entity = source_config_entity.db_entity_by_key(self.db_entity_key)
-        #resolve the target table by looking at the import table of the source db_entity
-        target_db_entity_key = source_db_entity.feature_class_configuration_as_dict.get('import_from_db_entity_key')
-        target_feature_class = target_config_entity.db_entity_feature_class(target_db_entity_key)
+        # resolve the target table by looking at the import table of the source db_entity
+        target_db_entity_key = source_db_entity.feature_class_configuration_as_dict.get(
+            "import_from_db_entity_key"
+        )
+        target_feature_class = target_config_entity.db_entity_feature_class(
+            target_db_entity_key
+        )
 
-        #filter the target features by their approval status
-        source_features = source_feature_class.objects.filter(approval_status='approved')
+        # filter the target features by their approval status
+        source_features = source_feature_class.objects.filter(
+            approval_status="approved"
+        )
 
-        #iterate over the features and merge approved rows into the target table
+        # iterate over the features and merge approved rows into the target table
         for source_feature in source_features:
             with transaction.commit_on_success(), reversion.create_revision():
                 target_feature = target_feature_class.objects.get(id=source_feature.id)
                 target_feature.__dict__.update(**source_feature.__dict__)
                 target_feature.save()
-                target_feature.comment = "Merge from ConfigEntity %s" % source_config_entity.key
+                target_feature.comment = (
+                    "Merge from ConfigEntity %s" % source_config_entity.key
+                )
                 # If we have comments defined on the base table
-                if hasattr(target_feature, 'comments'):
+                if hasattr(target_feature, "comments"):
                     target_feature.comments = target_feature.comment
                 reversion.set_user(self.updater)
                 reversion.set_comment(target_feature.comment)
 
-                #reset the approval field to null after changes are committed to the target
+                # reset the approval field to null after changes are committed to the target
                 source_feature.approval_status = None
                 source_feature.save()
 
@@ -99,7 +113,7 @@ class MergeUpdaterTool(AnalysisTool):
 # TODO should be handled by based class but isn't
 @receiver_subclasses(post_save, MergeUpdaterTool, "on_merge_updater_tool_post_save")
 def on_analysis_tool_post_save(sender, **kwargs):
-    analysis_tool = kwargs['instance']
+    analysis_tool = kwargs["instance"]
 
     if not analysis_tool._no_post_save_publishing:
         analysis_tool.update()

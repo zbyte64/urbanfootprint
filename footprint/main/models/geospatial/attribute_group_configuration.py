@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -16,12 +15,17 @@ from footprint.main.lib.functions import remove_keys, map_to_dict
 from footprint.main.managers.geo_inheritance_manager import GeoInheritanceManager
 from footprint.main.mixins.permissions import Permissions
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 class AttributeGroupConfiguration(Permissions):
 
-    attribute_group = models.ForeignKey('AttributeGroup', null=False)
-    feature_behavior = models.ForeignKey('FeatureBehavior', null=False)
+    attribute_group = models.ForeignKey(
+        "AttributeGroup", null=False, on_delete=models.PROTECT
+    )
+    feature_behavior = models.ForeignKey(
+        "FeatureBehavior", null=False, on_delete=models.PROTECT
+    )
 
     # A dictionary that maps the AttributeGroup's attributes to FeatureBehavior's Feature class fields by name to the attributes
     # For instance if the attributes in AttributeGroup are ['relation', 'primitive'] and a
@@ -39,14 +43,18 @@ class AttributeGroupConfiguration(Permissions):
     def attribute_fields(self):
         # introspect the attribute_group_class and cache the results. Return the fields
         feature_class = self.feature_behavior.db_entity.feature_class
-        field_dict = map_to_dict(lambda field: [field.name, field], feature_class._meta.fields)
-        return map(lambda attribute_name: field_dict[self.attribute_mapping.get(attribute_name, attribute_name)], self.attribute_group.attribute_keys)
+        field_dict = map_to_dict(
+            lambda field: [field.name, field], feature_class._meta.fields
+        )
+        return map(
+            lambda attribute_name: field_dict[
+                self.attribute_mapping.get(attribute_name, attribute_name)
+            ],
+            self.attribute_group.attribute_keys,
+        )
 
     objects = GeoInheritanceManager()
+
     class Meta(object):
         abstract = False
-        app_label = 'main'
-        # Custom permissions in addition to the default add, change, delete
-        permissions = (
-            ('view_attributegroupconfiguration', 'View AttributeGroupConfiguration'),
-        )
+        app_label = "main"

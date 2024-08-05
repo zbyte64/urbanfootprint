@@ -11,8 +11,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
-
-from __builtin__ import classmethod
 import logging
 
 from django.contrib.auth.models import Group
@@ -22,7 +20,9 @@ from footprint.main.lib.functions import flat_map, unique, compact
 from footprint.main.mixins.analysis_modules import AnalysisModules
 from footprint.main.mixins.categories import Categories
 from footprint.main.mixins.cloneable import Cloneable
-from footprint.main.mixins.config_entity_related_collection_adoption import ConfigEntityRelatedCollectionAdoption
+from footprint.main.mixins.config_entity_related_collection_adoption import (
+    ConfigEntityRelatedCollectionAdoption,
+)
 from footprint.main.managers.geo_inheritance_manager import GeoInheritanceManager
 from footprint.main.mixins.db_entities import DbEntities
 from footprint.main.mixins.deletable import Deletable
@@ -35,44 +35,57 @@ from footprint.main.mixins.name import Name
 from footprint.main.mixins.policy_sets import PolicySets
 from footprint.main.models.keys.keys import Keys
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 logger = logging.getLogger(__name__)
 
 
 class ConfigEntity(
-        ConfigEntityRelatedCollectionAdoption,
-        RelatedCollectionAdoption,
-        GeographicBounds,
-        PolicySets,
-        BuiltFormSets,
-        DbEntities,
-        AnalysisModules,
-        Name,
-        ScopedKey,
-        Categories,
-        Deletable,
-        Cloneable,
-        Permissions):
+    ConfigEntityRelatedCollectionAdoption,
+    RelatedCollectionAdoption,
+    GeographicBounds,
+    PolicySets,
+    BuiltFormSets,
+    DbEntities,
+    AnalysisModules,
+    Name,
+    ScopedKey,
+    Categories,
+    Deletable,
+    Cloneable,
+    Permissions,
+):
     """
-        The base abstract class defining and UrbanFootprint object that is configurable
+    The base abstract class defining and UrbanFootprint object that is configurable
     """
 
     objects = GeoInheritanceManager()
 
     # The user who created the config_entity
-    creator = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, related_name='config_entity_creator')
+    creator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        related_name="config_entity_creator",
+        on_delete=models.SET_NULL,
+    )
     # The user who last updated the db_entity
-    updater = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, related_name='config_entity_updater')
+    updater = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        related_name="config_entity_updater",
+        on_delete=models.SET_NULL,
+    )
 
-    media = models.ManyToManyField('Medium', null=True)
+    media = models.ManyToManyField("Medium", null=True)
 
     # Use parent_config_entity_subclassed to get the actual subclass, not a generic config_entity instance
-    parent_config_entity = models.ForeignKey('ConfigEntity', null=True, related_name='parent_set')
+    parent_config_entity = models.ForeignKey(
+        "ConfigEntity", null=True, related_name="parent_set", on_delete=models.PROTECT
+    )
 
     # Designates the key prefix for database imports
     import_key = models.CharField(max_length=64, null=True)
 
-    behavior = models.ForeignKey('Behavior', null=True)
+    behavior = models.ForeignKey("Behavior", null=True, on_delete=models.PROTECT)
 
     # Tracks post save publishing process for client-created ConfigEntities
     # This would be better handled with statuses, but tracking percent is the only
@@ -103,7 +116,9 @@ class ConfigEntity(
 
     @property
     def parent_config_entity_subclassed(self):
-        return self.parent_config_entity.subclassed if self.parent_config_entity else None
+        return (
+            self.parent_config_entity.subclassed if self.parent_config_entity else None
+        )
 
     @property
     def ancestors(self):
@@ -112,7 +127,11 @@ class ConfigEntity(
         :return:
         """
         parent_config_entity = self.parent_config_entity_subclassed
-        return ([parent_config_entity] + parent_config_entity.ancestors) if parent_config_entity else []
+        return (
+            ([parent_config_entity] + parent_config_entity.ancestors)
+            if parent_config_entity
+            else []
+        )
 
     def ascendants(self, until_ancestor=None):
         """
@@ -122,10 +141,15 @@ class ConfigEntity(
         :return:
         """
         parent_config_entity = self.parent_config_entity_subclassed
-        return [self] +\
-               ((parent_config_entity.ascendants(until_ancestor) if until_ancestor != parent_config_entity else []) \
-                    if parent_config_entity \
-                    else [])
+        return [self] + (
+            (
+                parent_config_entity.ascendants(until_ancestor)
+                if until_ancestor != parent_config_entity
+                else []
+            )
+            if parent_config_entity
+            else []
+        )
 
     def resolve_common_ancestor(self, config_entity, no_reverse_recurse=False):
         """
@@ -140,7 +164,9 @@ class ConfigEntity(
             return None
         else:
             # Run with self.parent_config_entity
-            result = self.parent_config_entity_subclassed.resolve_common_ancestor(config_entity, True)
+            result = self.parent_config_entity_subclassed.resolve_common_ancestor(
+                config_entity, True
+            )
             if no_reverse_recurse or result:
                 return result
             # If no common ancestor is found reverse actors. This must resolve in a match
@@ -151,7 +177,7 @@ class ConfigEntity(
     def origin_instance_subclassed(self):
         return self.origin_instance.subclassed if self.origin_instance else None
 
-    db = 'default'
+    db = "default"
 
     # Temporary state during post_save to disable recursing on post_save publishers
     _no_post_save_publishing = False
@@ -184,16 +210,18 @@ class ConfigEntity(
     # This pattern of collection inheritance is common enough that the functionality could be added to the Django model
     # framework by extending certain classes, but I haven't invested the time in doing this. The logic resides in
     # ConfigEntitySets for now
-    INHERITABLE_COLLECTIONS = ['db_entities', 'built_form_sets', 'policy_sets']
+    INHERITABLE_COLLECTIONS = ["db_entities", "built_form_sets", "policy_sets"]
     # Because DbEntityInterest uses a through class (and others might in the future), this dict should be used to
     # resolve the add and remove functions
 
     def __unicode__(self):
-        return '{name} {id} (key:{key}) (class:{clazz})'.format(name=self.name, id=self.id, key=self.key, clazz=self.__class__.__name__)
+        return "{name} {id} (key:{key}) (class:{clazz})".format(
+            name=self.name, id=self.id, key=self.key, clazz=self.__class__.__name__
+        )
 
     class Meta(object):
-        abstract = False # False to allow multi-table-inheritance with many-to-many relationship
-        app_label = 'main'
+        abstract = False  # False to allow multi-table-inheritance with many-to-many relationship
+        app_label = "main"
 
     def children(self):
         """
@@ -218,11 +246,17 @@ class ConfigEntity(
 
     def descendants_by_type(self, subclass):
         """
-            Find all descendants of this ConfigEntity that match the given ConfigEntity subclass
-            :param subclass: A ConfigEntity subclass
+        Find all descendants of this ConfigEntity that match the given ConfigEntity subclass
+        :param subclass: A ConfigEntity subclass
         """
-        return flat_map(lambda child: child.descendants_by_type(subclass) if not isinstance(child, subclass) else [child],
-                        self.subclassed_children())
+        return flat_map(
+            lambda child: (
+                child.descendants_by_type(subclass)
+                if not isinstance(child, subclass)
+                else [child]
+            ),
+            self.subclassed_children(),
+        )
 
     def deleted_children(self):
         return ConfigEntity.objects.filter(parent_config_entity=self, deleted=True)
@@ -235,7 +269,11 @@ class ConfigEntity(
         pass
 
     def config_keys(self):
-        return self.parent_config_entity_subclassed.config_keys() + [self.key] if self.parent_config_entity else [self.key]
+        return (
+            self.parent_config_entity_subclassed.config_keys() + [self.key]
+            if self.parent_config_entity
+            else [self.key]
+        )
 
     def schema(self):
         """
@@ -243,7 +281,11 @@ class ConfigEntity(
             where the top-most region is the first key, followed by sub-regions, project, and finally scenario
         :return: underscore concatenated schema name
         """
-        return "__".join(self.config_keys()[1:]) if self.parent_config_entity else self.config_keys()[0]
+        return (
+            "__".join(self.config_keys()[1:])
+            if self.parent_config_entity
+            else self.config_keys()[0]
+        )
 
     @property
     def schema_prefix(self):
@@ -256,13 +298,15 @@ class ConfigEntity(
 
     def expect_parent_config_entity(self):
         if not self.parent_config_entity:
-            raise Exception("{0} requires a parent_config_entity of types(s)".format(
-                self.__class__.__name__,
-                ', '.join(self.__class__.parent_classes())))
+            raise Exception(
+                "{0} requires a parent_config_entity of types(s)".format(
+                    self.__class__.__name__, ", ".join(self.__class__.parent_classes())
+                )
+            )
 
     def config_entity_ancestor(self, config_entity_class):
         """
-            Resolve the ancestor of this ConfigEntity of the given class
+        Resolve the ancestor of this ConfigEntity of the given class
         """
 
         if isinstance(self, config_entity_class):
@@ -270,11 +314,14 @@ class ConfigEntity(
         parent_config_entity = self.parent_config_entity_subclassed
         if parent_config_entity:
             return parent_config_entity.config_entity_ancestor(config_entity_class)
-        raise Exception("Reached GlobalConfig without finding ancestor of class %s" % config_entity_class)
+        raise Exception(
+            "Reached GlobalConfig without finding ancestor of class %s"
+            % config_entity_class
+        )
 
     def resolve_db(self):
         # This could be used to configure horizontal databases if needed
-        return 'default'
+        return "default"
 
     def user_group_name(self, global_group_name):
         """
@@ -287,8 +334,11 @@ class ConfigEntity(
             pass the expected global group name to form the name
         :return:
         """
-        return '__'.join(compact([self.schema_prefix, global_group_name])) if \
-            self.parent_config_entity else None
+        return (
+            "__".join(compact([self.schema_prefix, global_group_name]))
+            if self.parent_config_entity
+            else None
+        )
 
     def config_entity_group(self, global_group_name):
         """
@@ -299,7 +349,11 @@ class ConfigEntity(
         :return:
         """
         config_entity_group_name = self.user_group_name(global_group_name)
-        return Group.objects.get(name=config_entity_group_name) if config_entity_group_name else None
+        return (
+            Group.objects.get(name=config_entity_group_name)
+            if config_entity_group_name
+            else None
+        )
 
     def config_entity_groups(self):
         """
@@ -316,10 +370,12 @@ class ConfigEntity(
         # Map the fixture to its ConfigEntity Group
         # GlobalConfig returns nothing here since the SuperAdmin Group is both its Global Group
         # and ConfigEntity Group
-        return compact(map(
-            lambda global_group_name: self.config_entity_group(global_group_name),
-            client_fixture.default_config_entity_groups()
-        ))
+        return compact(
+            map(
+                lambda global_group_name: self.config_entity_group(global_group_name),
+                client_fixture.default_config_entity_groups(),
+            )
+        )
 
     def best_matching_config_entity_group_for_group(self, group):
         """
@@ -336,15 +392,25 @@ class ConfigEntity(
             # Go through the groups from most superior based on shortness of ancestry
             # If the group is in the ConfigEntity group's superiors, return the ConfigEntity group
             for group_hierarchy in sorted(
-               self.group_hierarchies.all(),
-               key=lambda group_hierarchy: len(group_hierarchy.config_entity.ancestors)):
-                if the_group_hierarchy.id in map(lambda g: g.id, group_hierarchy.all_superiors()):
+                self.group_hierarchies.all(),
+                key=lambda group_hierarchy: len(
+                    group_hierarchy.config_entity.ancestors
+                ),
+            ):
+                if the_group_hierarchy.id in map(
+                    lambda g: g.id, group_hierarchy.all_superiors()
+                ):
                     return group_hierarchy.group
-        raise Exception("No match for group %s among %s" % (
-            group.name, ', '.join(
-                map(lambda group_hierarchy: group_hierarchy.group.name,
-                    self.group_hierarchies.all())
-                )
+        raise Exception(
+            "No match for group %s among %s"
+            % (
+                group.name,
+                ", ".join(
+                    map(
+                        lambda group_hierarchy: group_hierarchy.group.name,
+                        self.group_hierarchies.all(),
+                    )
+                ),
             )
         )
 
@@ -354,7 +420,11 @@ class ConfigEntity(
         Concatenates all ancestor names except for that of the GlobalConfig.
         Thus a full name might be region_name subregion_name project_name scenario_name
         """
-        return '%s %s of schema %s' % (self.__class__.__name__, self.name, self.schema())
+        return "%s %s of schema %s" % (
+            self.__class__.__name__,
+            self.name,
+            self.schema(),
+        )
 
     @classmethod
     def lineage(cls, discovered=[]):
@@ -364,9 +434,18 @@ class ConfigEntity(
         :param cls:
         :return:
         """
-        return unique([cls] + flat_map(lambda parent_class: parent_class.lineage(discovered + cls.parent_classes()),
-                                       filter(lambda parent_class: parent_class not in discovered,
-                                              cls.parent_classes())))
+        return unique(
+            [cls]
+            + flat_map(
+                lambda parent_class: parent_class.lineage(
+                    discovered + cls.parent_classes()
+                ),
+                filter(
+                    lambda parent_class: parent_class not in discovered,
+                    cls.parent_classes(),
+                ),
+            )
+        )
 
     @property
     def subclassed(self):
@@ -395,7 +474,8 @@ class ConfigEntity(
         subclassed = cls._subclassed_lookup.get(id, None)
         if not subclassed:
             cls._subclassed_lookup[id] = cls.resolve_scenario(
-                ConfigEntity.objects.get_subclass(id=id))
+                ConfigEntity.objects.get_subclass(id=id)
+            )
         return cls._subclassed_lookup[id]
 
     _dynamic_model_cached_lookup = {}
@@ -422,7 +502,7 @@ class ConfigEntity(
 
     @staticmethod
     def resolve_scenario(config_entity):
-        for scenario_type in ['basescenario', 'futurescenario']:
+        for scenario_type in ["basescenario", "futurescenario"]:
             if hasattr(config_entity, scenario_type):
                 return getattr(config_entity, scenario_type)
         return config_entity
@@ -430,6 +510,7 @@ class ConfigEntity(
 
 class ConfigEntityKey(Keys):
     """
-        Keyspace for config entities. These keys have no prefix.
+    Keyspace for config entities. These keys have no prefix.
     """
+
     pass

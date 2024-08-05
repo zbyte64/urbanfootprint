@@ -16,12 +16,12 @@ from footprint.main.managers.geo_inheritance_manager import FootprintGeoManager
 from footprint.main.models.config.config_entity import ConfigEntity
 from footprint.main.models.keys.keys import Keys
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 class GlobalConfig(ConfigEntity):
     """
-        A singleton whose adoptable attributes are adopted by other ConfigEntity instances
+    A singleton whose adoptable attributes are adopted by other ConfigEntity instances
     """
 
     objects = FootprintGeoManager()
@@ -34,29 +34,28 @@ class GlobalConfig(ConfigEntity):
     @property
     def full_name(self):
         """
-            Overrides the default and return name
+        Overrides the default and return name
         """
         return self.name
 
     def db_entity_owner(self, db_entity):
         if self.schema() == db_entity.schema:
             return self
-        raise Exception("Reached GlobalConfig without finding an owner for the db_entity {0}".format(db_entity))
+        raise Exception(
+            "Reached GlobalConfig without finding an owner for the db_entity {0}".format(
+                db_entity
+            )
+        )
 
     @classmethod
     def parent_classes(cls):
         """
-            GlobalConfig can not have a parent
+        GlobalConfig can not have a parent
         """
         return []
 
     class Meta(object):
-        permissions = (
-            ('view_globalconfig', 'View GlobalConfig'),
-            # merge is meaningless for a GlobalConfig, but the uniformity is useful
-            ('merge_globalconfig', 'Merge GlobalConfig'),
-        )
-        app_label = 'main'
+        app_label = "main"
 
 
 def global_config_singleton():

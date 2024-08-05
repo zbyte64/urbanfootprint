@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -10,14 +9,12 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
 # Public License v3 for more details; see <http://www.gnu.org/licenses/>.
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
-from csvImporter.fields import CharField, FloatField, IntegerField
-from csvImporter.model import CsvModel
+from pydantic import BaseModel, Field
+from typing import Optional
 
-__author__ = 'calthorpe_analytics'
 
-class ImportPlacetypeComponent(CsvModel):
 #    BTID,Building_Type,
 # Urban Mixed Use,Urban Residential,Urban Commercial,City Mixed Use,City Residential,City Commercial,
 # Town Mixed Use,Town Residential,Town Commercial,Village Mixed Use,Village Residential,Village Commercial,
@@ -27,47 +24,44 @@ class ImportPlacetypeComponent(CsvModel):
 # Industrial/Office/Res Mixed Low,Suburban Multifamily,Suburban Mixed Residential,Residential Subdivision,
 # Large Lot Residential Area,Rural Residential,Rural Ranchettes,Rural Employment,Campus/ University,
 # Institutional,Parks & Open Space,BuildingType Name,Gross_Net_Flag
-    category = CharField(prepare=lambda x: x or '')
-    btid = IntegerField(prepare=lambda x: x or 0)
-    color = CharField(prepare=lambda x: x or '')
-    name = CharField(prepare=lambda x: x or '')
-    urban_mixed_use = FloatField(prepare=lambda x: x or 0)
-    urban_residential = FloatField(prepare=lambda x: x or 0)
-    urban_commercial = FloatField(prepare=lambda x: x or 0)
-    city_mixed_use = FloatField(prepare=lambda x: x or 0)
-    city_residential = FloatField(prepare=lambda x: x or 0)
-    city_commercial = FloatField(prepare=lambda x: x or 0)
-    town_mixed_use = FloatField(prepare=lambda x: x or 0)
-    town_residential = FloatField(prepare=lambda x: x or 0)
-    town_commercial = FloatField(prepare=lambda x: x or 0)
-    village_mixed_use = FloatField(prepare=lambda x: x or 0)
-    village_residential = FloatField(prepare=lambda x: x or 0)
-    village_commercial = FloatField(prepare=lambda x: x or 0)
-    neighborhood_residential = FloatField(prepare=lambda x: x or 0)
-    neighborhood_low = FloatField(prepare=lambda x: x or 0)
-    office_focus = FloatField(prepare=lambda x: x or 0)
-    mixed_office_and_r_and_d = FloatField(prepare=lambda x: x or 0)
-    office_industrial = FloatField(prepare=lambda x: x or 0)
-    industrial_focus = FloatField(prepare=lambda x: x or 0)
-    low_density_employment_park = FloatField(prepare=lambda x: x or 0)
-    high_intensity_activity_center = FloatField(prepare=lambda x: x or 0)
-    mid_intensity_activity_center = FloatField(prepare=lambda x: x or 0)
-    low_intensity_retail_centered_neighborhood = FloatField(prepare=lambda x: x or 0)
-    retail_strip_mall_big_box = FloatField(prepare=lambda x: x or 0)
-    industrial_office_residential_mixed_high = FloatField(prepare=lambda x: x or 0)
-    industrial_office_residential_mixed_low = FloatField(prepare=lambda x: x or 0)
-    suburban_multifamily = FloatField(prepare=lambda x: x or 0)
-    suburban_mixed_residential = FloatField(prepare=lambda x: x or 0)
-    residential_subdivision = FloatField(prepare=lambda x: x or 0)
-    large_lot_residential = FloatField(prepare=lambda x: x or 0)
-    rural_residential = FloatField(prepare=lambda x: x or 0)
-    rural_ranchettes = FloatField(prepare=lambda x: x or 0)
-    rural_employment = FloatField(prepare=lambda x: x or 0)
-    campus_or_university = FloatField(prepare=lambda x: x or 0)
-    institutional = FloatField(prepare=lambda x: x or 0)
-    parks_and_open_space = FloatField(prepare=lambda x: x or 0)
-    blank = FloatField(prepare=lambda x: x or 0)
-
-    class Meta:
-        delimiter = ","
-        has_header = True
+class ImportPlacetypeComponent(BaseModel):
+    category: str = Field(default="")
+    btid: int = Field(default=0)
+    color: str = Field(default="")
+    name: str = Field(default="")
+    urban_mixed_use: float = Field(default=0.0)
+    urban_residential: float = Field(default=0.0)
+    urban_commercial: float = Field(default=0.0)
+    city_mixed_use: float = Field(default=0.0)
+    city_residential: float = Field(default=0.0)
+    city_commercial: float = Field(default=0.0)
+    town_mixed_use: float = Field(default=0.0)
+    town_residential: float = Field(default=0.0)
+    town_commercial: float = Field(default=0.0)
+    village_mixed_use: float = Field(default=0.0)
+    village_residential: float = Field(default=0.0)
+    village_commercial: float = Field(default=0.0)
+    neighborhood_residential: float = Field(default=0.0)
+    neighborhood_low: float = Field(default=0.0)
+    office_focus: float = Field(default=0.0)
+    mixed_office_and_r_and_d: float = Field(default=0.0)
+    office_industrial: float = Field(default=0.0)
+    industrial_focus: float = Field(default=0.0)
+    low_density_employment_park: float = Field(default=0.0)
+    high_intensity_activity_center: float = Field(default=0.0)
+    mid_intensity_activity_center: float = Field(default=0.0)
+    low_intensity_retail_centered_neighborhood: float = Field(default=0.0)
+    retail_strip_mall_big_box: float = Field(default=0.0)
+    industrial_office_residential_mixed_high: float = Field(default=0.0)
+    industrial_office_residential_mixed_low: float = Field(default=0.0)
+    suburban_multifamily: float = Field(default=0.0)
+    suburban_mixed_residential: float = Field(default=0.0)
+    residential_subdivision: float = Field(default=0.0)
+    large_lot_residential: float = Field(default=0.0)
+    rural_residential: float = Field(default=0.0)
+    rural_ranchettes: float = Field(default=0.0)
+    rural_employment: float = Field(default=0.0)
+    campus_or_university: float = Field(default=0.0)
+    institutional: float = Field(default=0.0)
+    parks_and_open_space: float = Field(default=0.0)
+    blank: float = Field(default=0.0)

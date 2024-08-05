@@ -1,4 +1,3 @@
-
 # UrbanFootprint v1.5
 # Copyright (C) 2017 Calthorpe Analytics
 #
@@ -13,7 +12,7 @@
 # from memory_profiler import profile
 import logging
 
-from footprint.client.configuration import resolve_fixture
+from footprint.client.configuration.utils import resolve_fixture
 from footprint.main.lib.functions import map_to_dict
 from footprint.main.models.config.global_config import GlobalConfig
 from footprint.main.models.config.region import Region
@@ -24,23 +23,28 @@ from footprint.main.models.presentation.result.result import Result
 
 logger = logging.getLogger(__name__)
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
+
 
 def on_config_entity_post_save_behevior(sender, **kwargs):
     """
-        Sync a ConfigEntity's Behaviors
+    Sync a ConfigEntity's Behaviors
     """
     # TODO This is obviously not fully implemented
     raise Exception("Not implemented")
-    config_entity = kwargs['instance']
-    logger.info("Handler: on_config_entity_post_save_behvior. ConfigEntity: %s" % config_entity.name)
+    config_entity = kwargs["instance"]
+    logger.info(
+        "Handler: on_config_entity_post_save_behvior. ConfigEntity: %s"
+        % config_entity.name
+    )
     update_or_create_behaviors(config_entity)
+
 
 def update_or_create_behaviors(config_entity, **kwargs):
     """
-        Creates Behaviors when saving a config_entity if they do not yet exist.
-        :param config_entity
-        :return:
+    Creates Behaviors when saving a config_entity if they do not yet exist.
+    :param config_entity
+    :return:
     """
 
     # Just process Regions and GlobalConfig
@@ -54,33 +58,43 @@ def update_or_create_behaviors(config_entity, **kwargs):
         "behavior",
         BehaviorFixture,
         config_entity.schema(),
-        config_entity=config_entity)
+        config_entity=config_entity,
+    )
 
     # Create each ResultLibrary and store them as a dict keyed by their key
-    result_library_lookup = map_to_dict(lambda result_library_config: [
-        result_library_config.key,
-        ResultLibrary.objects.update_or_create(
-            key=result_library_config.key,
-            config_entity=config_entity,
-            scope=config_entity.schema(),
-            defaults=dict(
-                name=result_library_config.name.format(config_entity.name),
-                description=result_library_config.description.format(config_entity.name)
-            )
-        )[0]],
-        client_result.result_libraries())
+    result_library_lookup = map_to_dict(
+        lambda result_library_config: [
+            result_library_config.key,
+            ResultLibrary.objects.update_or_create(
+                key=result_library_config.key,
+                config_entity=config_entity,
+                scope=config_entity.schema(),
+                defaults=dict(
+                    name=result_library_config.name.format(config_entity.name),
+                    description=result_library_config.description.format(
+                        config_entity.name
+                    ),
+                ),
+            )[0],
+        ],
+        client_result.result_libraries(),
+    )
 
-    #for key, result_library in result_library_lookup.items():
+    # for key, result_library in result_library_lookup.items():
     #    result_library.results.all().delete()
 
     # Create each configured Result
-    for result_config in filter(lambda result:
-                                    not db_entity_keys or
-                                    result.result_db_entity_key in db_entity_keys or
-                                    result.source_db_entity_key in db_entity_keys,
-                                client_result.results()):
+    for result_config in filter(
+        lambda result: not db_entity_keys
+        or result.result_db_entity_key in db_entity_keys
+        or result.source_db_entity_key in db_entity_keys,
+        client_result.results(),
+    ):
 
-        logger.info("Result Publishing Result DbEntity Key: %s" % result_config.result_db_entity_key)
+        logger.info(
+            "Result Publishing Result DbEntity Key: %s"
+            % result_config.result_db_entity_key
+        )
         # Create the db_entity and db_entity_interest for the result
         db_entity = result_config.update_or_create_db_entity(config_entity)
         # Make the db_entity the default selected one for its key
@@ -94,7 +108,7 @@ def update_or_create_behaviors(config_entity, **kwargs):
 
         db_entity_interest = DbEntityInterest.objects.get(
             config_entity=config_entity,
-            db_entity__key=result_config.result_db_entity_key
+            db_entity__key=result_config.result_db_entity_key,
         )
 
         # Create a result for each result key given.
@@ -103,21 +117,34 @@ def update_or_create_behaviors(config_entity, **kwargs):
             defaults=dict(
                 # Use the Result's custom Medium, keyed by the Result key
                 medium=result_config.resolve_result_medium(),
-                configuration=result_config.get_presentation_medium_configuration())
+                configuration=result_config.get_presentation_medium_configuration(),
+            ),
         )
         # If created, add the result to the matching result library
         if created:
-            result_library_lookup[result_config.result_library_key].presentation_media.add(result)
+            result_library_lookup[
+                result_config.result_library_key
+            ].presentation_media.add(result)
 
     # Remove orphan results and their DbEntityInterests/DbEntities
-    result_library_ids = map(lambda result_library: result_library.id, ResultLibrary.objects.filter(config_entity=config_entity))
-    valid_result_keys = map(lambda result_config: result_config.result_db_entity_key, client_result.results())
-    orphan_results = Result.objects.filter(presentation__id__in=result_library_ids).exclude(db_entity_key__in=valid_result_keys)
-    DbEntityInterest.objects.filter(config_entity=config_entity, db_entity__key__in=map(lambda result: result.db_entity_key, orphan_results)).delete()
+    result_library_ids = map(
+        lambda result_library: result_library.id,
+        ResultLibrary.objects.filter(config_entity=config_entity),
+    )
+    valid_result_keys = map(
+        lambda result_config: result_config.result_db_entity_key,
+        client_result.results(),
+    )
+    orphan_results = Result.objects.filter(
+        presentation__id__in=result_library_ids
+    ).exclude(db_entity_key__in=valid_result_keys)
+    DbEntityInterest.objects.filter(
+        config_entity=config_entity,
+        db_entity__key__in=map(lambda result: result.db_entity_key, orphan_results),
+    ).delete()
     orphan_results.delete()
 
 
 def on_config_entity_pre_delete_result(sender, **kwargs):
-    """
-    """
-    config_entity = kwargs['instance']
+    """ """
+    config_entity = kwargs["instance"]

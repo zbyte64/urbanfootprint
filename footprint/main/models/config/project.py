@@ -20,13 +20,14 @@ from footprint.main.models.config.region import Region
 from footprint.main.models.config.config_entity import ConfigEntity
 from footprint.main.utils.utils import get_property_path
 
-__author__ = 'calthorpe_analytics'
+__author__ = "calthorpe_analytics"
 
 
 class Project(ConfigEntity):
     """
-        A Project references a single Region and serves as the parent configuration for one or more Scenarios
+    A Project references a single Region and serves as the parent configuration for one or more Scenarios
     """
+
     objects = GeoInheritanceManager()
 
     base_year = models.IntegerField(default=2005)
@@ -37,16 +38,27 @@ class Project(ConfigEntity):
 
     def recalculate_bounds(self):
 
-        primary_geography_feature_classes = [self.db_entity_feature_class(db_entity.key)
-                                     for db_entity in self.owned_db_entities() if
-                                     get_property_path(db_entity, 'feature_class_configuration.primary_geography')]
+        primary_geography_feature_classes = [
+            self.db_entity_feature_class(db_entity.key)
+            for db_entity in self.owned_db_entities()
+            if get_property_path(
+                db_entity, "feature_class_configuration.primary_geography"
+            )
+        ]
 
-        use_for_bounds_feature_classes = [self.db_entity_feature_class(db_entity.key)
-                                     for db_entity in self.owned_db_entities() if
-                                     get_property_path(db_entity, 'feature_class_configuration.use_for_bounds')]
+        use_for_bounds_feature_classes = [
+            self.db_entity_feature_class(db_entity.key)
+            for db_entity in self.owned_db_entities()
+            if get_property_path(
+                db_entity, "feature_class_configuration.use_for_bounds"
+            )
+        ]
 
-        authority_feature_classes = use_for_bounds_feature_classes if len(use_for_bounds_feature_classes) > 0 \
+        authority_feature_classes = (
+            use_for_bounds_feature_classes
+            if len(use_for_bounds_feature_classes) > 0
             else primary_geography_feature_classes
+        )
 
         extents = []
         for authority_feature_class in authority_feature_classes:
@@ -78,9 +90,4 @@ class Project(ConfigEntity):
         return [Region]
 
     class Meta(object):
-        app_label = 'main'
-        permissions = (
-            ('view_project', 'View Project'),
-            # this would permit the merging of region scoped db_entities from on region to another
-            ('merge_project', 'Merge Project'),
-        )
+        app_label = "main"
