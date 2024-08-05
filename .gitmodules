@@ -1,4 +1,0 @@
-[submodule "sproutcore/frameworks/sproutcore"]
-	path = sproutcore/frameworks/sproutcore
-	url = https://github.com/UrbanFootprint/sproutcore.git
-	branch = master

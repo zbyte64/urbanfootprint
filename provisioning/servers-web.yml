@@ -1,7 +1,0 @@
----
-# file: servers-web.yml
-# - hosts: servers-web
-- hosts: all
-  roles:
-    - common
-    - web

@@ -1,8 +1,0 @@
----
-# file: servers-db.yml
-# - hosts: servers-db
-- hosts: all
-  roles:
-    - common
-    - postgresql
-    - db
