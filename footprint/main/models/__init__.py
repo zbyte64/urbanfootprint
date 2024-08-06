@@ -111,7 +111,6 @@ from footprint.main.models.built_form.urban.building_type import BuildingType
 
 from footprint.main.models.built_form.agriculture.crop import Crop
 from footprint.main.models.built_form.agriculture.crop_type import CropType
-from footprint.main.models.built_form.agriculture.landscape_type import LandscapeType
 from footprint.main.models.built_form.agriculture.agriculture_attribute_set import (
     AgricultureAttributeSet,
 )
@@ -134,7 +133,6 @@ from footprint.main.models.presentation.chart import Chart
 from footprint.main.models.presentation.geo_library import GeoLibrary
 from footprint.main.models.presentation.geo_library_catalog import GeoLibraryCatalog
 from footprint.main.models.presentation.grid import Grid
-from footprint.main.models.presentation.layer_chart import LayerChart
 from footprint.main.models.presentation.layer_library import LayerLibrary
 from footprint.main.models.presentation.map import Map
 from footprint.main.models.presentation.medium import Medium

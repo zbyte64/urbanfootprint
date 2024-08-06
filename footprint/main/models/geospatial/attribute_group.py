@@ -31,7 +31,7 @@ class AttributeGroup(ScopedKey):
 
     # An array of attribute identifiers. These will normally be mapped to the actually attribute names
     # of a certain class in AttributeGroupConfiguration.attribute_mappings
-    attribute_keys = PickledObjectField(default=lambda: [], null=False)
+    attribute_keys = PickledObjectField(default=[], null=False)
 
     # AttributePermission allow for fine-grained permission to the attributes of the AttributeGroup
     # This is only needed if individual attributes need different permissions for a single user

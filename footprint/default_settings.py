@@ -24,6 +24,8 @@ env = environ.Env(
     DEBUG=(bool, False)
 )
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 CLIENT = None
 
 set_var_from_env = env
@@ -40,7 +42,7 @@ CELERY_TASK_RESULT_EXPIRES = 18000  # 5 hours.
 CELERY_RESULT_PERSISTENT = True
 CELERYD_MAX_TASKS_PER_CHILD = 5
 
-INSTALL_LOCATION = "/srv/"
+INSTALL_LOCATION = BASE_DIR
 
 SOCKETIO_HOST = "0.0.0.0"
 SOCKETIO_PORT = "8000"
@@ -128,7 +130,7 @@ STATICFILES_FINDERS = (
 
 # Absolute path to the directory that holds media.
 # Example: "/home/media/media.lawrence.com/"
-MEDIA_ROOT = os.path.join("/srv/", "calthorpe_media")
+MEDIA_ROOT = os.path.join(BASE_DIR, "calthorpe_media")
 
 # This is used for the development server, only when DEBUG = True
 STATIC_DOC_ROOT = MEDIA_ROOT
@@ -141,38 +143,43 @@ STATIC_URL = "/static/"
 
 TEMP_DIR = "/tmp/"
 
-STATIC_ROOT = os.path.join("/srv", "calthorpe_static")
+STATIC_ROOT = os.path.join(BASE_DIR, "calthorpe_static")
 
 ADMIN_MEDIA_PREFIX = STATIC_URL + "grappelli/"
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = "$z7yrc#(il44#+y8y2gwfv8g8u%b+gx!pv16q9%@5l=jl9zx6p"
 
-# List of callables that know how to import templates from various sources.
-TEMPLATE_LOADERS = (
-    "django.template.loaders.filesystem.Loader",
-    "django.template.loaders.app_directories.Loader",
-    "django.template.loaders.eggs.Loader",
-)
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.contrib.auth.context_processors.auth",
+                "django.core.context_processors.debug",
+                "django.core.context_processors.i18n",
+                "django.core.context_processors.media",
+                "django.template.context_processors.request",
+                "django.contrib.messages.context_processors.messages",
+                "django.core.context_processors.static",
+            ],
+        },
+    },
+]
 
-MIDDLEWARE_CLASSES = (
-    "django.middleware.common.CommonMiddleware",
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.transaction.TransactionMiddleware",
-    "oauth2_provider.middleware.OAuth2TokenMiddleware",
-)
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
 
-TEMPLATE_CONTEXT_PROCESSORS = (
-    "django.contrib.auth.context_processors.auth",
-    "django.core.context_processors.debug",
-    "django.core.context_processors.i18n",
-    "django.core.context_processors.media",
-    "django.contrib.messages.context_processors.messages",
-    "django.core.context_processors.static",
-)
 
 AUTHENTICATION_BACKENDS = (
     # "oauth2_provider.backends.OAuth2Backend",
@@ -193,6 +200,8 @@ FIXTURE_DIRS = (os.path.join(ROOT_PATH, "footprint/fixtures"),)
 
 # Disabling this to allow the stdlib UnitTest
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 DJANGO_APPS = (
     # "django.contrib.webdesign",
@@ -217,7 +226,7 @@ THIRD_PARTY_APPS = (
 PROJECT_APPS = (
     "footprint.main",
     "footprint.upload_manager",
-    "footprint.client",
+    "footprint.client.configuration",
 )
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS
@@ -234,7 +243,7 @@ SERIALIZATION_MODULES = {}
 
 # Here we define the default paths that UrbanFootprint will use during installation and stuff
 
-CALTHORPE_DATA_DUMP_LOCATION = os.path.join("/srv/", "datadump")
+CALTHORPE_DATA_DUMP_LOCATION = os.path.join(BASE_DIR, "datadump")
 
 SENDFILE_ROOT = os.path.join(MEDIA_ROOT, "downloadable")
 
@@ -293,18 +302,6 @@ else:
 TASKS = {"default": {"BACKEND": "django_tasks.backends.database.DatabaseBackend"}}
 
 SQL_PATH = os.path.join(STATIC_ROOT, "sql")
-
-PATH_CONFIGURATIONS = {
-    "default": dict(
-        ROOT="/srv/",
-        GIT_ROOT="/srv/calthorpe",
-        BASE_PATH="/srv/calthorpe/urbanfootprint/",
-        PYTHON_INTERPRETER="/srv/calthorpe_env/bin/python",
-        ROOT_PATH="/srv/calthorpe/urbanfootprint/",
-        PROJ_ROOT="/srv/calthorpe/urbanfootprint/footprint/",
-        WEBSOCKETS_ROOT="/srv/calthorpe/urbanfootprint/websockets",
-    ),
-}
 
 
 REQUIRED_SHAPEFILE_TYPES = [".shp", ".shx", ".dbf"]

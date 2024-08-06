@@ -29,7 +29,6 @@ from footprint.main.models.built_form.agriculture.crop_type import CropType
 from footprint.main.models.built_form.urban.building import Building
 from footprint.main.models.built_form.urban.building_type import BuildingType
 from footprint.main.models.built_form.urban.urban_placetype import UrbanPlacetype
-from footprint.main.models.built_form.agriculture.landscape_type import LandscapeType
 from footprint.main.models.config.global_config import GlobalConfig
 from footprint.main.models.config.region import Region
 from footprint.main.models.built_form.built_form_set import BuiltFormSet
@@ -72,7 +71,6 @@ for cls in [
     UrbanPlacetype,
     BuildingType,
     Building,
-    LandscapeType,
     CropType,
     Crop,
 ]:

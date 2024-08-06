@@ -84,7 +84,7 @@ class AnalysisModule(SharedKey, Name, Deletable):
     _no_post_save_task_run_global = False
 
     # The AnalysisModuleConfiguration.configuration
-    configuration = PickledObjectField(null=True, default=lambda: {})
+    configuration = PickledObjectField(null=True, default={})
 
     def __getattr__(self, attr_name):
         """
@@ -317,7 +317,7 @@ class AnalysisModuleConfiguration(object):
         super(AnalysisModuleConfiguration, self).__init__()
 
     # Describes how to configure the features of the table
-    configuration = PickledObjectField(null=True, default=lambda: {})
+    configuration = PickledObjectField(null=True, default={})
 
     # These are the keys allowed in the configuration. They can be changed at any time
     CONFIGURATION_KEYS = [

@@ -33,14 +33,14 @@ __author__ = "calthorpe_analytics"
 
 
 class InformationSchema(models.Model):
-
+    id = models.AutoField(primary_key=True)
     table_catalog = models.CharField(max_length=100)
     table_schema = models.CharField(max_length=100)
     table_name = models.CharField(max_length=100)
     # Pretend this is the primary key since the table doesn't have a single column primary key
-    column_name = models.CharField(max_length=100, null=False, primary_key=True)
+    column_name = models.CharField(max_length=100, null=False)
     data_type = models.CharField(max_length=100)
-    udt_name = models.CharField(max_length=100, null=False, primary_key=True)
+    udt_name = models.CharField(max_length=100, null=False)
 
     objects = InformationSchemaManager()
 
@@ -215,6 +215,7 @@ class InformationSchema(models.Model):
 
     class Meta(object):
         db_table = '"information_schema"."columns"'
+        unique_together = [("column_name", "udt_name")]
 
 
 class PGNamespace(models.Model):
@@ -257,17 +258,18 @@ class SpatialRefSys(models.Model):
 
 
 class GeometryColumns(models.Model):
-
+    id = models.AutoField(primary_key=True)
     f_table_catalog = models.CharField(max_length=256, null=False)
-    f_table_schema = models.CharField(max_length=256, null=False, primary_key=True)
-    f_table_name = models.CharField(max_length=256, null=False, primary_key=True)
-    f_geometry_column = models.CharField(max_length=256, null=False, primary_key=True)
+    f_table_schema = models.CharField(max_length=256, null=False)
+    f_table_name = models.CharField(max_length=256, null=False)
+    f_geometry_column = models.CharField(max_length=256, null=False)
     coord_dimension = models.IntegerField(null=False)
     srid = models.IntegerField(null=False)
     type = models.CharField(max_length=30, null=False)
 
     class Meta(object):
         db_table = "geometry_columns"
+        unique_together = [("f_table_schema", "f_table_name", "f_geometry_column")]
 
 
 def sync_geometry_columns(schema=None, table=None):

@@ -89,7 +89,7 @@ class LayerSelection(Name, FeatureFieldMixin):
     # The value of constrain_to_query has no affect if the previous results were empty
     selection_options = PickledObjectField(
         null=True,
-        default=lambda: dict(constrain_to_bounds=True, constrain_to_query=True),
+        default=dict(constrain_to_bounds=True, constrain_to_query=True),
     )
 
     aggregates = PickledObjectField(null=True)
@@ -100,7 +100,7 @@ class LayerSelection(Name, FeatureFieldMixin):
     # This dictionary of the raw query strings, stored so the UI can show them again
     query_strings = PickledObjectField(
         null=True,
-        default=lambda: dict(
+        default=dict(
             aggregates_string=None, filter_string=None, group_by_string=None
         ),
     )
@@ -122,7 +122,7 @@ class LayerSelection(Name, FeatureFieldMixin):
     # The ordered list of field names matching the summary results
     summary_fields = PickledObjectField(null=True)
     # A lookup from the field name to a human readable title
-    summary_field_title_lookup = PickledObjectField(null=True, default=lambda: {})
+    summary_field_title_lookup = PickledObjectField(null=True, default={})
 
     # The sql used to create the results, for exporting and debugging
     query_sql = TextField(null=True)

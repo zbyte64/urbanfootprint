@@ -11,66 +11,8 @@
 
 from django.db import DEFAULT_DB_ALIAS
 from django.db.models import Manager
-from reversion.models import Version, Revision, VersionQuerySet
 
 __author__ = "calthorpe_analytics"
 
 
-class FeatureRevisionManager(VersionQuerySet):
-
-    def _get_versions(self, db=None):
-        """Returns all versions that apply to this manager."""
-        db = db or DEFAULT_DB_ALIAS
-        return (
-            FeatureVersionProxy.objects.using(db)
-            .filter(
-                revision__manager_slug=self._manager_slug,
-            )
-            .select_related("revision")
-        )
-
-
-feature_revision_manager = Manager  # .from_queryset(FeatureRevisionManager("feature"))
-
-
-class FeatureRevisionProxy(Revision):
-
-    @property
-    def version_set(self):
-        """
-            Proxy Wrapper Version-->FeatureVersion
-        :return:
-        """
-        versions = super(FeatureRevisionProxy, self).version_set.all()
-        return FeatureVersionProxy.objects.filter(id__in=versions).order_by("id")
-
-    class Meta(object):
-        proxy = True
-
-
-class FeatureVersionProxy(Version):
-    """
-    Customizes deserialization for Feature versions
-    """
-
-    @property
-    def revision(self):
-        """
-            Proxy wrapper Revision-->FeatureVersion
-        :return:
-        """
-        rev = super(FeatureVersionProxy, self).revision
-        return FeatureRevisionProxy.objects.get(id=rev.id)
-
-    @property
-    def object_version(self):
-        """
-            Calls the parent method but then sets the wkb_geometry, which is never stored in the version
-        :return:
-        """
-        version = super(FeatureVersionProxy, self).object_version
-        version.object.wkb_geometry = self.object.wkb_geometry
-        return version
-
-    class Meta(object):
-        proxy = True
+feature_revision_manager = Manager
